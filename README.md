@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Project PM
 
-## Getting Started
+A GitHub-aware project manager that helps you track what's active, what's abandoned, where you left off, and whether you're building the same thing in multiple places.
 
-First, run the development server:
+## The Problem
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+When you have 50+ repos and use Claude Code across all of them, it's easy to:
+- Forget where you left off on a project
+- Let projects go stale without realizing it
+- Build the same functionality in multiple repos
+- Lose track of planning docs and TODOs
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## The Solution
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Project PM scans all your GitHub repos, enriches them with local filesystem data (CLAUDE.md, README, plan docs, TODOs, dependencies), and presents everything in a filterable dashboard.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Features
 
-## Learn More
+- **Status tracking**: Automatically classifies projects as active/recent/stale/abandoned based on commit activity
+- **Project detail**: See where you left off — last commit, open PRs, branches, planning docs
+- **Overlap detection**: Identifies projects that share capabilities (email, auth, file storage, etc.) to prevent duplication
+- **Manual overrides**: Tag projects, add notes, pause/override status for context that git can't capture
+- **Capability extraction**: Parses CLAUDE.md and README files to build a functional inventory using controlled vocabulary mapping
 
-To learn more about Next.js, take a look at the following resources:
+## Quick Start
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Clone the repo
+2. `npm install`
+3. Copy `.env.local.example` to `.env.local` and fill in your GitHub token and username
+4. `npm run scan` to generate the project manifest
+5. `npm run dev` to open the dashboard at http://localhost:3000
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Screenshots
 
-## Deploy on Vercel
+_Coming soon_
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16 (App Router) + Tailwind CSS v4
+- Octokit for GitHub API
+- Vitest for testing
+- TypeScript throughout
