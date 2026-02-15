@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
-import { fetchAllRepos } from './github';
+import { fetchAllRepos, fetchRepoFiles } from './github';
 import { readLocalProject } from './local';
 import { extractDescription, extractCapabilities, detectTechStack } from './extractor';
 import { computeStatus } from './status';
@@ -39,13 +39,18 @@ async function main() {
   const username = process.env.GITHUB_USERNAME;
   const localDir = process.env.LOCAL_PROJECTS_DIR;
 
+  // Parse --org flag from CLI args
+  const orgIndex = process.argv.indexOf('--org');
+  const org = orgIndex !== -1 ? process.argv[orgIndex + 1] : undefined;
+
   if (!token || !username) {
     console.error('Missing GITHUB_TOKEN or GITHUB_USERNAME in environment');
     process.exit(1);
   }
 
-  console.log(`Fetching repos for ${username}...`);
-  const repos = await fetchAllRepos(token, username);
+  const target = org || username;
+  console.log(`Fetching repos for ${target}${org ? ' (org)' : ''}...`);
+  const { projects: repos, octokit, owner } = await fetchAllRepos(token, username, org);
   console.log(`Found ${repos.length} repos on GitHub`);
 
   const overrides = loadOverrides();
@@ -66,6 +71,14 @@ async function main() {
 
     if (localPath) {
       local = readLocalProject(localPath);
+    } else {
+      // Fetch CLAUDE.md, README.md, package.json from GitHub API
+      const remote = await fetchRepoFiles(octokit, owner, repo.name);
+      local.claudeContent = remote.claudeContent;
+      local.readmeContent = remote.readmeContent;
+      local.hasClaude = remote.claudeContent !== null;
+      local.hasReadme = remote.readmeContent !== null;
+      local.dependencies = remote.packageJson || {};
     }
 
     const docContent = local.claudeContent || local.readmeContent || '';
