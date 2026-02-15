@@ -1,3 +1,5 @@
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 import { fetchAllRepos } from './github';
 import { readLocalProject } from './local';
 import { extractDescription, extractCapabilities, detectTechStack } from './extractor';
