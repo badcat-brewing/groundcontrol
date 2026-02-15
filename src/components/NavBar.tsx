@@ -35,10 +35,10 @@ export default function NavBar() {
   }
 
   return (
-    <nav className="border-b bg-white">
+    <nav className="bg-slate-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
-          <Link href="/" className="text-lg font-bold text-gray-900">
+          <Link href="/" className="font-mono text-sm font-bold tracking-wider uppercase text-white">
             Project PM
           </Link>
           <div className="flex items-center gap-6">
@@ -48,8 +48,8 @@ export default function NavBar() {
                 href={link.href}
                 className={`text-sm font-medium pb-0.5 ${
                   pathname === link.href
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-white border-b-2 border-sky-400'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {link.label}
@@ -57,19 +57,19 @@ export default function NavBar() {
             ))}
             <a
               href="/api/export"
-              className="text-sm font-medium text-gray-500 hover:text-gray-700"
+              className="text-sm font-medium text-slate-400 hover:text-white"
             >
               Export
             </a>
             <button
               onClick={handleScan}
               disabled={scanning}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-md bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400 disabled:opacity-50"
             >
               {scanning ? 'Scanning...' : 'Scan Now'}
             </button>
             {error && (
-              <span className="text-sm text-red-600">{error}</span>
+              <span className="text-sm text-red-400">{error}</span>
             )}
           </div>
         </div>

@@ -9,12 +9,18 @@ interface ProjectDetailProps {
 
 function DocIndicator({ label, has }: { label: string; has: boolean }) {
   return (
-    <div className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2">
-      <span className="text-sm text-gray-700">{label}</span>
+    <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
+      <span className="text-sm text-slate-700">{label}</span>
       {has ? (
-        <span className="text-sm font-medium text-green-600">Yes</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          <span className="text-xs font-medium text-emerald-700">Yes</span>
+        </span>
       ) : (
-        <span className="text-sm font-medium text-gray-400">No</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-slate-300" />
+          <span className="text-xs font-medium text-slate-400">No</span>
+        </span>
       )}
     </div>
   );
@@ -26,7 +32,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{project.name}</h1>
           <StatusBadge status={project.computedStatus} />
         </div>
         {project.githubUrl && (
@@ -34,7 +40,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
             href={project.githubUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm text-sky-600 hover:text-sky-700"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -57,50 +63,50 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
 
       {/* Description */}
       {project.description && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="mb-2 text-sm font-semibold uppercase text-gray-500">
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">
             Description
           </h2>
-          <p className="text-gray-700">{project.description}</p>
+          <p className="text-slate-700">{project.description}</p>
         </div>
       )}
 
       {/* Where I Left Off */}
-      <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold uppercase text-gray-500">
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
           Where I Left Off
         </h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
-            <p className="text-xs text-gray-500">Last Commit</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Last Commit</p>
             {project.lastCommitDate ? (
               <>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="font-mono text-lg font-semibold text-slate-900">
                   {timeAgo(project.lastCommitDate)}
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="font-mono text-xs text-slate-400">
                   {new Date(project.lastCommitDate).toLocaleDateString()}
                 </p>
               </>
             ) : (
-              <p className="text-lg font-semibold text-gray-400">N/A</p>
+              <p className="font-mono text-lg font-semibold text-slate-400">N/A</p>
             )}
           </div>
           <div>
-            <p className="text-xs text-gray-500">Commits (30d)</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Commits (30d)</p>
+            <p className="font-mono text-lg font-semibold text-slate-900">
               {project.commitCountLast30Days}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Open PRs</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Open PRs</p>
+            <p className="font-mono text-lg font-semibold text-slate-900">
               {project.openPRCount}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Branches</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Branches</p>
+            <p className="font-mono text-lg font-semibold text-slate-900">
               {project.branchCount}
             </p>
           </div>
@@ -108,19 +114,19 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
       </div>
 
       {/* Metadata */}
-      <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold uppercase text-gray-500">
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
           Metadata
         </h2>
         <div className="space-y-4">
           {project.techStack.length > 0 && (
             <div>
-              <p className="mb-1.5 text-xs text-gray-500">Tech Stack</p>
+              <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">Tech Stack</p>
               <div className="flex flex-wrap gap-1.5">
                 {project.techStack.map((t) => (
                   <span
                     key={t}
-                    className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-700"
+                    className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-indigo-600"
                   >
                     {t}
                   </span>
@@ -130,12 +136,12 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
           )}
           {project.capabilities.length > 0 && (
             <div>
-              <p className="mb-1.5 text-xs text-gray-500">Capabilities</p>
+              <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">Capabilities</p>
               <div className="flex flex-wrap gap-1.5">
                 {project.capabilities.map((c) => (
                   <span
                     key={c}
-                    className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-medium text-teal-700"
+                    className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-teal-600"
                   >
                     {c}
                   </span>
@@ -145,12 +151,12 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
           )}
           {project.tags.length > 0 && (
             <div>
-              <p className="mb-1.5 text-xs text-gray-500">Tags</p>
+              <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">Tags</p>
               <div className="flex flex-wrap gap-1.5">
                 {project.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-700"
+                    className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600"
                   >
                     {tag}
                   </span>
@@ -162,8 +168,8 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
       </div>
 
       {/* Documentation Status */}
-      <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold uppercase text-gray-500">
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
           Documentation Status
         </h2>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -176,21 +182,21 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
 
       {/* Notes */}
       {project.notes && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="mb-2 text-sm font-semibold uppercase text-gray-500">
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">
             Notes
           </h2>
-          <p className="whitespace-pre-wrap text-gray-700">{project.notes}</p>
+          <p className="whitespace-pre-wrap text-slate-700">{project.notes}</p>
         </div>
       )}
 
       {/* Local Path */}
       {project.path && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="mb-2 text-sm font-semibold uppercase text-gray-500">
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">
             Local Path
           </h2>
-          <code className="rounded bg-gray-100 px-2 py-1 text-sm font-mono text-gray-700">
+          <code className="rounded bg-slate-100 px-2 py-1 text-sm font-mono text-slate-700">
             {project.path}
           </code>
         </div>

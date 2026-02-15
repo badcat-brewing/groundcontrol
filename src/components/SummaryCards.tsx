@@ -4,13 +4,13 @@ interface SummaryCardsProps {
   projects: Project[];
 }
 
-const cards = [
-  { label: 'Total', key: 'total', bg: 'bg-gray-100', text: 'text-gray-800' },
-  { label: 'Active', key: 'active', bg: 'bg-green-100', text: 'text-green-800' },
-  { label: 'Recent', key: 'recent', bg: 'bg-blue-100', text: 'text-blue-800' },
-  { label: 'Stale', key: 'stale', bg: 'bg-yellow-100', text: 'text-yellow-800' },
-  { label: 'Abandoned', key: 'abandoned', bg: 'bg-red-100', text: 'text-red-800' },
-  { label: 'Paused', key: 'paused', bg: 'bg-purple-100', text: 'text-purple-800' },
+const metrics = [
+  { label: 'Total', key: 'total', dot: 'bg-slate-400' },
+  { label: 'Active', key: 'active', dot: 'bg-emerald-400' },
+  { label: 'Recent', key: 'recent', dot: 'bg-sky-400' },
+  { label: 'Stale', key: 'stale', dot: 'bg-amber-400' },
+  { label: 'Abandoned', key: 'abandoned', dot: 'border border-rose-400' },
+  { label: 'Paused', key: 'paused', dot: 'bg-violet-400' },
 ] as const;
 
 export default function SummaryCards({ projects }: SummaryCardsProps) {
@@ -24,14 +24,12 @@ export default function SummaryCards({ projects }: SummaryCardsProps) {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-      {cards.map((card) => (
-        <div
-          key={card.key}
-          className={`rounded-lg p-4 ${card.bg} ${card.text}`}
-        >
-          <p className="text-sm font-medium">{card.label}</p>
-          <p className="text-2xl font-bold">{counts[card.key]}</p>
+    <div className="flex items-center gap-6 border-b border-slate-200 pb-4">
+      {metrics.map((m) => (
+        <div key={m.key} className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${m.dot}`} />
+          <span className="text-xs font-medium text-slate-500">{m.label}</span>
+          <span className="font-mono text-sm font-semibold text-slate-900">{counts[m.key]}</span>
         </div>
       ))}
     </div>

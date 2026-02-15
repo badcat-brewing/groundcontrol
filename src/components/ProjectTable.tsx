@@ -87,14 +87,14 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
           placeholder="Search projects..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+          className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
         />
         <select
           value={statusFilter}
           onChange={(e) =>
             setStatusFilter(e.target.value as ProjectStatus | 'all')
           }
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+          className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
@@ -107,7 +107,7 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
 
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-gray-200 text-xs font-semibold uppercase text-gray-500">
+          <thead className="border-b border-slate-200 text-xs font-medium uppercase tracking-wider text-slate-400">
             <tr>
               <th
                 className="cursor-pointer px-3 py-2"
@@ -132,13 +132,13 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
               <th className="px-3 py-2">Capabilities</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {filtered.map((project) => (
-              <tr key={project.name} className="hover:bg-gray-50">
+              <tr key={project.name} className="hover:bg-sky-50/50 even:bg-slate-50/30">
                 <td className="px-3 py-2 font-medium">
                   <Link
                     href={`/projects/${encodeURIComponent(project.name)}`}
-                    className="text-blue-600 hover:underline"
+                    className="text-sky-600 hover:text-sky-700"
                   >
                     {project.name}
                   </Link>
@@ -146,20 +146,20 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
                 <td className="px-3 py-2">
                   <StatusBadge status={project.computedStatus} />
                 </td>
-                <td className="px-3 py-2 text-gray-500">
+                <td className="px-3 py-2 font-mono text-slate-500">
                   {project.lastCommitDate
                     ? timeAgo(project.lastCommitDate)
                     : 'N/A'}
                 </td>
-                <td className="max-w-xs truncate px-3 py-2 text-gray-500">
+                <td className="max-w-xs truncate px-3 py-2 text-slate-500">
                   {project.description ?? '-'}
                 </td>
                 <td className="px-3 py-2">
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {project.techStack.map((t) => (
                       <span
                         key={t}
-                        className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600"
+                        className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-indigo-600"
                       >
                         {t}
                       </span>
@@ -167,11 +167,11 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
                   </div>
                 </td>
                 <td className="px-3 py-2">
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {project.capabilities.map((c) => (
                       <span
                         key={c}
-                        className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600"
+                        className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-teal-600"
                       >
                         {c}
                       </span>
@@ -184,7 +184,7 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
               <tr>
                 <td
                   colSpan={6}
-                  className="px-3 py-8 text-center text-gray-400"
+                  className="px-3 py-8 text-center text-slate-400"
                 >
                   No projects found.
                 </td>

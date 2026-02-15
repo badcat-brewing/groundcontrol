@@ -14,7 +14,7 @@ export default function OverlapGrid({ overlaps }: OverlapGridProps) {
   if (sorted.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">No capability overlaps detected.</p>
+        <p className="text-slate-500">No capability overlaps detected.</p>
       </div>
     );
   }
@@ -24,14 +24,17 @@ export default function OverlapGrid({ overlaps }: OverlapGridProps) {
       {sorted.map(([capability, projects]) => (
         <div
           key={capability}
-          className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm"
+          className="rounded-lg border border-slate-200 bg-white p-5"
         >
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="font-mono text-sm font-semibold text-slate-900">
               {capability}
             </h3>
-            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800">
-              {projects.length} projects
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-slate-400" />
+              <span className="font-mono text-xs font-medium text-slate-600">
+                {projects.length}
+              </span>
             </span>
           </div>
           <ul className="space-y-2">
@@ -39,7 +42,7 @@ export default function OverlapGrid({ overlaps }: OverlapGridProps) {
               <li key={project.name} className="flex items-center gap-2">
                 <Link
                   href={`/projects/${project.name}`}
-                  className="text-sm text-blue-600 hover:underline"
+                  className="text-sm text-sky-600 hover:text-sky-700"
                 >
                   {project.name}
                 </Link>

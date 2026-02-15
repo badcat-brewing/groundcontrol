@@ -86,26 +86,26 @@ export default function ProjectEditor({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <h2 className="mb-4 text-sm font-semibold uppercase text-gray-500">
+    <div className="rounded-lg border border-slate-200 bg-white p-5">
+      <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-slate-400">
         Edit Overrides
       </h2>
 
       <div className="space-y-6">
         {/* Tag Editor */}
         <div>
-          <label className="mb-1.5 block text-xs text-gray-500">Tags</label>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Tags</label>
           <div className="mb-2 flex flex-wrap gap-1.5">
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-700"
+                className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600"
               >
                 {tag}
                 <button
                   type="button"
                   onClick={() => removeTag(tag)}
-                  className="ml-0.5 text-orange-500 hover:text-orange-800"
+                  className="ml-0.5 text-slate-400 hover:text-slate-700"
                   aria-label={`Remove tag ${tag}`}
                 >
                   x
@@ -125,30 +125,30 @@ export default function ProjectEditor({
                 }
               }}
               placeholder="Add a tag..."
-              className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
             <button
               type="button"
               onClick={addTag}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+              className="rounded-md bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400"
             >
               Add
             </button>
           </div>
           {saved === 'tags' && (
-            <p className="mt-1 text-xs text-green-600">Saved!</p>
+            <p className="mt-1 text-xs text-emerald-600">Saved!</p>
           )}
         </div>
 
         {/* Status Override */}
         <div>
-          <label className="mb-1.5 block text-xs text-gray-500">
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
             Status Override
           </label>
           <select
             value={status}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -157,30 +157,30 @@ export default function ProjectEditor({
             ))}
           </select>
           {saved === 'status' && (
-            <p className="mt-1 text-xs text-green-600">Saved!</p>
+            <p className="mt-1 text-xs text-emerald-600">Saved!</p>
           )}
         </div>
 
         {/* Notes */}
         <div>
-          <label className="mb-1.5 block text-xs text-gray-500">Notes</label>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Notes</label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={4}
             placeholder="Add notes about this project..."
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
           />
           <div className="mt-1 flex items-center gap-2">
             <button
               type="button"
               onClick={handleNotesSave}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+              className="rounded-md bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400"
             >
               Save Notes
             </button>
             {saved === 'notes' && (
-              <span className="text-xs text-green-600">Saved!</span>
+              <span className="text-xs text-emerald-600">Saved!</span>
             )}
           </div>
         </div>

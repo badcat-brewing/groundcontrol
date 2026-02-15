@@ -1,23 +1,26 @@
 import { ProjectStatus } from '../../scanner/types';
 
-const colorMap: Record<ProjectStatus, string> = {
-  active: 'bg-green-100 text-green-800',
-  recent: 'bg-blue-100 text-blue-800',
-  stale: 'bg-yellow-100 text-yellow-800',
-  abandoned: 'bg-red-100 text-red-800',
-  paused: 'bg-purple-100 text-purple-800',
+const dotStyles: Record<ProjectStatus, string> = {
+  active: 'bg-emerald-400',
+  recent: 'bg-sky-400',
+  stale: 'bg-amber-400',
+  abandoned: 'border border-rose-400 bg-transparent',
+  paused: 'bg-violet-400',
 };
 
-interface StatusBadgeProps {
-  status: ProjectStatus;
-}
+const textStyles: Record<ProjectStatus, string> = {
+  active: 'text-emerald-700',
+  recent: 'text-sky-700',
+  stale: 'text-amber-700',
+  abandoned: 'text-rose-600',
+  paused: 'text-violet-700',
+};
 
-export default function StatusBadge({ status }: StatusBadgeProps) {
+export default function StatusBadge({ status }: { status: ProjectStatus }) {
   return (
-    <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${colorMap[status]}`}
-    >
-      {status}
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`h-2 w-2 rounded-full ${dotStyles[status]}`} />
+      <span className={`text-xs font-medium ${textStyles[status]}`}>{status}</span>
     </span>
   );
 }
