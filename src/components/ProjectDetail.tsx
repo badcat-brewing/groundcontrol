@@ -1,4 +1,5 @@
 import StatusBadge from './StatusBadge';
+import ProjectEditor from './ProjectEditor';
 import { Project } from '../../scanner/types';
 import { timeAgo } from '@/lib/utils';
 
@@ -194,6 +195,14 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
           </code>
         </div>
       )}
+
+      {/* Override Editor */}
+      <ProjectEditor
+        projectName={project.name}
+        initialTags={project.tags}
+        initialStatus={project.status}
+        initialNotes={project.notes}
+      />
     </div>
   );
 }
