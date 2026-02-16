@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { homedir } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -38,7 +39,8 @@ function findLocalPath(name: string, localDir: string): string | null {
 async function main() {
   const token = process.env.GITHUB_TOKEN;
   const username = process.env.GITHUB_USERNAME;
-  const localDir = process.env.LOCAL_PROJECTS_DIR;
+  const rawLocalDir = process.env.LOCAL_PROJECTS_DIR;
+  const localDir = rawLocalDir?.startsWith('~') ? rawLocalDir.replace('~', homedir()) : rawLocalDir;
 
   // Parse --org flag from CLI args
   const orgIndex = process.argv.indexOf('--org');
