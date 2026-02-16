@@ -4,6 +4,7 @@ import { fetchAllRepos, fetchRepoFiles } from './github';
 import { readLocalProject } from './local';
 import { extractDescription, extractCapabilities, detectTechStack } from './extractor';
 import { computeStatus } from './status';
+import { computeLocalRemoteDiff } from './diff';
 import { Project, ProjectManifest, Overrides } from './types';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -89,6 +90,15 @@ async function main() {
     const override = overrides[repo.name] || {};
     const computed = computeStatus(repo.lastCommitDate);
 
+    // Classify source
+    const source = localPath && repo.githubUrl ? 'synced' : (localPath ? 'local-only' : 'remote-only');
+
+    // Compute diff for synced repos
+    let diff = null;
+    if (source === 'synced' && localPath) {
+      diff = await computeLocalRemoteDiff(localPath, repo.branchNames, repo.defaultBranch);
+    }
+
     projects.push({
       name: repo.name,
       path: localPath,
@@ -109,7 +119,7 @@ async function main() {
       status: override.status || null,
       notes: override.notes || null,
       computedStatus: override.status || computed,
-      source: localPath ? 'synced' : 'remote-only',
+      source,
       visibility: repo.visibility,
       languages: repo.languages,
       topics: repo.topics,
@@ -117,7 +127,7 @@ async function main() {
       sizeKB: repo.sizeKB,
       isArchived: repo.isArchived,
       isFork: repo.isFork,
-      diff: null,
+      diff,
     });
   }
 

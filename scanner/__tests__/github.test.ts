@@ -26,6 +26,7 @@ describe('transformRepoData', () => {
     expect(result.isFork).toBe(false);
     expect(result.license).toBe('MIT');
     expect(result.topics).toEqual(['javascript']);
+    expect(result.branchNames).toEqual([]);
   });
 
   it('handles null pushed_at', () => {

@@ -6,6 +6,7 @@ export interface PartialProject {
   defaultBranch: string;
   lastCommitDate: string | null;
   branchCount: number;
+  branchNames: string[];
   openPRCount: number;
   commitCountLast30Days: number;
   visibility: 'public' | 'private' | null;
@@ -25,6 +26,7 @@ export function transformRepoData(repo: any): PartialProject {
     defaultBranch: repo.default_branch || 'main',
     lastCommitDate: repo.pushed_at || null,
     branchCount: 0,
+    branchNames: [],
     openPRCount: 0,
     commitCountLast30Days: 0,
     visibility: visibility as 'public' | 'private',
@@ -82,6 +84,15 @@ export async function fetchRepoLanguages(octokit: Octokit, owner: string, repo: 
   }
 }
 
+export async function fetchBranchNames(octokit: Octokit, owner: string, repo: string): Promise<string[]> {
+  try {
+    const { data } = await octokit.repos.listBranches({ owner, repo, per_page: 100 });
+    return data.map(b => b.name);
+  } catch {
+    return [];
+  }
+}
+
 export interface FetchResult {
   projects: PartialProject[];
   octokit: Octokit;
@@ -112,9 +123,8 @@ export async function fetchAllRepos(token: string, username: string, org?: strin
   for (const repo of allRepos) {
     const partial = transformRepoData(repo);
 
-    const [branches, pulls, commits, languages] = await Promise.all([
-      octokit.repos.listBranches({ owner, repo: repo.name, per_page: 100 })
-        .then(r => r.data.length).catch(() => 0),
+    const [branchNames, pulls, commits, languages] = await Promise.all([
+      fetchBranchNames(octokit, owner, repo.name),
       octokit.pulls.list({ owner, repo: repo.name, state: 'open', per_page: 100 })
         .then(r => r.data.length).catch(() => 0),
       octokit.repos.getCommitActivityStats({ owner, repo: repo.name })
@@ -125,7 +135,8 @@ export async function fetchAllRepos(token: string, username: string, org?: strin
       fetchRepoLanguages(octokit, owner, repo.name),
     ]);
 
-    partial.branchCount = branches;
+    partial.branchCount = branchNames.length;
+    partial.branchNames = branchNames;
     partial.openPRCount = pulls;
     partial.commitCountLast30Days = commits;
     partial.languages = languages;
