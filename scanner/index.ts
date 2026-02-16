@@ -109,6 +109,15 @@ async function main() {
       status: override.status || null,
       notes: override.notes || null,
       computedStatus: override.status || computed,
+      source: localPath ? 'synced' : 'remote-only',
+      visibility: repo.visibility,
+      languages: repo.languages,
+      topics: repo.topics,
+      license: repo.license,
+      sizeKB: repo.sizeKB,
+      isArchived: repo.isArchived,
+      isFork: repo.isFork,
+      diff: null,
     });
   }
 
