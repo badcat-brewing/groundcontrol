@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import StatusBadge from './StatusBadge';
-import { Project, ProjectStatus } from '../../scanner/types';
+import SourceBadge from './SourceBadge';
+import { Project, ProjectStatus, ProjectSource } from '../../scanner/types';
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -31,6 +32,7 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
+  const [sourceFilter, setSourceFilter] = useState<ProjectSource | 'all'>('all');
   const [search, setSearch] = useState('');
 
   const handleSort = (key: SortKey) => {
@@ -52,6 +54,10 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
 
     if (statusFilter !== 'all') {
       result = result.filter((p) => p.computedStatus === statusFilter);
+    }
+
+    if (sourceFilter !== 'all') {
+      result = result.filter((p) => p.source === sourceFilter);
     }
 
     if (search.trim()) {
@@ -77,7 +83,7 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
     });
 
     return result;
-  }, [projects, statusFilter, search, sortKey, sortDir]);
+  }, [projects, statusFilter, sourceFilter, search, sortKey, sortDir]);
 
   return (
     <div>
@@ -103,6 +109,18 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
           <option value="abandoned">Abandoned</option>
           <option value="paused">Paused</option>
         </select>
+        <select
+          value={sourceFilter}
+          onChange={(e) =>
+            setSourceFilter(e.target.value as ProjectSource | 'all')
+          }
+          className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+        >
+          <option value="all">All sources</option>
+          <option value="local-only">Local only</option>
+          <option value="remote-only">Remote only</option>
+          <option value="synced">Synced</option>
+        </select>
       </div>
 
       <div className="overflow-x-auto">
@@ -115,6 +133,7 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
               >
                 Name{sortIndicator('name')}
               </th>
+              <th className="px-3 py-2">Source</th>
               <th
                 className="cursor-pointer px-3 py-2"
                 onClick={() => handleSort('status')}
@@ -142,6 +161,9 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
                   >
                     {project.name}
                   </Link>
+                </td>
+                <td className="px-3 py-2">
+                  <SourceBadge source={project.source} />
                 </td>
                 <td className="px-3 py-2">
                   <StatusBadge status={project.computedStatus} />
@@ -183,7 +205,7 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-3 py-8 text-center text-slate-400"
                 >
                   No projects found.
