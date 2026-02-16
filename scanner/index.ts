@@ -4,11 +4,13 @@ import { fetchAllRepos, fetchRepoFiles } from './github';
 import { readLocalProject } from './local';
 import { extractDescription, extractCapabilities, detectTechStack } from './extractor';
 import { computeStatus } from './status';
+import { computeLocalRemoteDiff } from './diff';
 import { Project, ProjectManifest, Overrides } from './types';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { homedir } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,7 +39,8 @@ function findLocalPath(name: string, localDir: string): string | null {
 async function main() {
   const token = process.env.GITHUB_TOKEN;
   const username = process.env.GITHUB_USERNAME;
-  const localDir = process.env.LOCAL_PROJECTS_DIR;
+  const rawLocalDir = process.env.LOCAL_PROJECTS_DIR;
+  const localDir = rawLocalDir?.startsWith('~') ? rawLocalDir.replace('~', homedir()) : rawLocalDir;
 
   // Parse --org flag from CLI args
   const orgIndex = process.argv.indexOf('--org');
@@ -55,6 +58,8 @@ async function main() {
 
   const overrides = loadOverrides();
   const projects: Project[] = [];
+
+  console.log(`Enriching ${repos.length} repos (fetching languages, computing diffs for local repos)...`);
 
   for (const repo of repos) {
     const localPath = localDir ? findLocalPath(repo.name, localDir) : null;
@@ -89,6 +94,16 @@ async function main() {
     const override = overrides[repo.name] || {};
     const computed = computeStatus(repo.lastCommitDate);
 
+    // Classify source
+    const source = localPath && repo.githubUrl ? 'synced' : (localPath ? 'local-only' : 'remote-only');
+
+    // Compute diff for synced repos
+    let diff = null;
+    if (source === 'synced' && localPath) {
+      console.log(`  Computing local-remote diff for ${repo.name}...`);
+      diff = await computeLocalRemoteDiff(localPath, repo.branchNames, repo.defaultBranch);
+    }
+
     projects.push({
       name: repo.name,
       path: localPath,
@@ -109,7 +124,17 @@ async function main() {
       status: override.status || null,
       notes: override.notes || null,
       computedStatus: override.status || computed,
+      source,
+      visibility: repo.visibility,
+      languages: repo.languages,
+      topics: repo.topics,
+      license: repo.license,
+      sizeKB: repo.sizeKB,
+      isArchived: repo.isArchived,
+      isFork: repo.isFork,
+      diff,
     });
+    if (projects.length % 5 === 0) console.log(`  ...processed ${projects.length}/${repos.length}`);
   }
 
   // Sort: active first, then recent, stale, abandoned
@@ -130,9 +155,27 @@ async function main() {
     return acc;
   }, {} as Record<string, number>);
 
-  console.log('\nSummary:');
+  console.log('\nStatus breakdown:');
   for (const [status, count] of Object.entries(counts)) {
     console.log(`  ${status}: ${count}`);
+  }
+
+  // Print source breakdown
+  const sourceBreakdown = {
+    'local-only': projects.filter(p => p.source === 'local-only').length,
+    'remote-only': projects.filter(p => p.source === 'remote-only').length,
+    synced: projects.filter(p => p.source === 'synced').length,
+  };
+
+  console.log('\nSource breakdown:');
+  console.log(`  Local only: ${sourceBreakdown['local-only']}`);
+  console.log(`  Remote only: ${sourceBreakdown['remote-only']}`);
+  console.log(`  Synced: ${sourceBreakdown.synced}`);
+
+  // Log fork count
+  const forkCount = projects.filter(p => p.isFork).length;
+  if (forkCount > 0) {
+    console.log(`\nFound ${forkCount} forks`);
   }
 }
 
