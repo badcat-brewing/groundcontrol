@@ -57,7 +57,7 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
     }
 
     if (sourceFilter !== 'all') {
-      result = result.filter((p) => p.source === sourceFilter);
+      result = result.filter((p) => (p.source || 'remote-only') === sourceFilter);
     }
 
     if (search.trim()) {

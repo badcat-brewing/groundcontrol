@@ -57,6 +57,8 @@ async function main() {
   const overrides = loadOverrides();
   const projects: Project[] = [];
 
+  console.log(`Enriching ${repos.length} repos (fetching languages, computing diffs for local repos)...`);
+
   for (const repo of repos) {
     const localPath = localDir ? findLocalPath(repo.name, localDir) : null;
     let local = {
@@ -96,6 +98,7 @@ async function main() {
     // Compute diff for synced repos
     let diff = null;
     if (source === 'synced' && localPath) {
+      console.log(`  Computing local-remote diff for ${repo.name}...`);
       diff = await computeLocalRemoteDiff(localPath, repo.branchNames, repo.defaultBranch);
     }
 
@@ -129,6 +132,7 @@ async function main() {
       isFork: repo.isFork,
       diff,
     });
+    if (projects.length % 5 === 0) console.log(`  ...processed ${projects.length}/${repos.length}`);
   }
 
   // Sort: active first, then recent, stale, abandoned
@@ -149,9 +153,27 @@ async function main() {
     return acc;
   }, {} as Record<string, number>);
 
-  console.log('\nSummary:');
+  console.log('\nStatus breakdown:');
   for (const [status, count] of Object.entries(counts)) {
     console.log(`  ${status}: ${count}`);
+  }
+
+  // Print source breakdown
+  const sourceBreakdown = {
+    'local-only': projects.filter(p => p.source === 'local-only').length,
+    'remote-only': projects.filter(p => p.source === 'remote-only').length,
+    synced: projects.filter(p => p.source === 'synced').length,
+  };
+
+  console.log('\nSource breakdown:');
+  console.log(`  Local only: ${sourceBreakdown['local-only']}`);
+  console.log(`  Remote only: ${sourceBreakdown['remote-only']}`);
+  console.log(`  Synced: ${sourceBreakdown.synced}`);
+
+  // Log fork count
+  const forkCount = projects.filter(p => p.isFork).length;
+  if (forkCount > 0) {
+    console.log(`\nFound ${forkCount} forks`);
   }
 }
 

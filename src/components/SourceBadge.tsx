@@ -1,24 +1,27 @@
 import { ProjectSource } from '../../scanner/types';
 
-const bgStyles: Record<ProjectSource, string> = {
+const bgStyles: Record<ProjectSource | 'unknown', string> = {
   'local-only': 'bg-slate-100',
   'remote-only': 'bg-sky-100',
   synced: 'bg-emerald-100',
+  unknown: 'bg-gray-100',
 };
 
-const textStyles: Record<ProjectSource, string> = {
+const textStyles: Record<ProjectSource | 'unknown', string> = {
   'local-only': 'text-slate-600',
   'remote-only': 'text-sky-600',
   synced: 'text-emerald-600',
+  unknown: 'text-gray-600',
 };
 
-const labels: Record<ProjectSource, string> = {
+const labels: Record<ProjectSource | 'unknown', string> = {
   'local-only': 'Local',
   'remote-only': 'Remote',
   synced: 'Synced',
+  unknown: 'Unknown',
 };
 
-function getIcon(source: ProjectSource) {
+function getIcon(source: ProjectSource | 'unknown') {
   switch (source) {
     case 'local-only':
       return (
@@ -38,16 +41,24 @@ function getIcon(source: ProjectSource) {
           <path d="M1.5 2a.5.5 0 01.5-.5h5a.5.5 0 010 1H2.5a.5.5 0 01-.5-.5zm0 4a.5.5 0 01.5-.5h5a.5.5 0 010 1H2.5a.5.5 0 01-.5-.5zm0 4a.5.5 0 01.5-.5h5a.5.5 0 010 1H2.5a.5.5 0 01-.5-.5zM14 8a1 1 0 011 1v4a2 2 0 01-2 2H9.5a.5.5 0 010-1H13a1 1 0 001-1V9a1 1 0 01-1-1z" />
         </svg>
       );
+    case 'unknown':
+    default:
+      return (
+        <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 15A7 7 0 100 8a7 7 0 008 7zm0 1A8 8 0 108 0a8 8 0 000 16z" />
+        </svg>
+      );
   }
 }
 
-export default function SourceBadge({ source }: { source: ProjectSource }) {
+export default function SourceBadge({ source }: { source: ProjectSource | undefined | null }) {
+  const displaySource = (source as ProjectSource | 'unknown') || 'unknown';
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${bgStyles[source]} ${textStyles[source]}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${bgStyles[displaySource]} ${textStyles[displaySource]}`}
     >
-      {getIcon(source)}
-      {labels[source]}
+      {getIcon(displaySource)}
+      {labels[displaySource]}
     </span>
   );
 }

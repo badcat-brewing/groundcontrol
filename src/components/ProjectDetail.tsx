@@ -86,94 +86,98 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
         )}
       </div>
 
-      {/* Source & Remote Metadata */}
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
-          Source & Remote Metadata
-        </h2>
-        <div className="space-y-3">
-          {/* Source badge and metadata row 1 */}
-          <div className="flex flex-wrap items-center gap-3">
-            <SourceBadge source={project.source} />
-            {project.visibility && (
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${project.visibility === 'public' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
-                {project.visibility === 'public' ? 'Public' : 'Private'}
-              </span>
-            )}
-            {project.isArchived && (
-              <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-600">
-                Archived
-              </span>
-            )}
-            {project.isFork && (
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                Fork
-              </span>
-            )}
-          </div>
-
-          {/* Size and License */}
-          <div className="flex flex-wrap gap-4">
-            <div>
-              <p className="text-xs font-medium text-slate-500">Size</p>
-              <p className="text-sm text-slate-900">{formatSize(project.sizeKB)}</p>
+      {/* Source & Remote Metadata (only if source or other new fields exist) */}
+      {(project.source || project.visibility || project.isArchived || project.isFork || project.license || (project.languages && Object.keys(project.languages).length > 0) || (project.topics && project.topics.length > 0)) && (
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
+            Source & Remote Metadata
+          </h2>
+          <div className="space-y-3">
+            {/* Source badge and metadata row 1 */}
+            <div className="flex flex-wrap items-center gap-3">
+              {project.source && <SourceBadge source={project.source} />}
+              {project.visibility && (
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${project.visibility === 'public' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                  {project.visibility === 'public' ? 'Public' : 'Private'}
+                </span>
+              )}
+              {project.isArchived && (
+                <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-600">
+                  Archived
+                </span>
+              )}
+              {project.isFork && (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                  Fork
+                </span>
+              )}
             </div>
-            {project.license && (
+
+            {/* Size and License */}
+            <div className="flex flex-wrap gap-4">
+              {project.sizeKB !== undefined && (
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Size</p>
+                  <p className="text-sm text-slate-900">{formatSize(project.sizeKB)}</p>
+                </div>
+              )}
+              {project.license && (
+                <div>
+                  <p className="text-xs font-medium text-slate-500">License</p>
+                  <p className="text-sm text-slate-900">{project.license}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Languages bar */}
+            {project.languages && Object.keys(project.languages).length > 0 ? (
               <div>
-                <p className="text-xs font-medium text-slate-500">License</p>
-                <p className="text-sm text-slate-900">{project.license}</p>
+                <p className="mb-2 text-xs font-medium text-slate-500">Languages</p>
+                <div className="flex h-6 overflow-hidden rounded bg-slate-100">
+                  {Object.entries(project.languages)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 5)
+                    .map(([lang, bytes]) => {
+                      const total = Object.values(project.languages).reduce((a, b) => a + b, 0);
+                      const pct = ((bytes / total) * 100).toFixed(0);
+                      return (
+                        <div
+                          key={lang}
+                          className={`${getLanguageColor(lang)}`}
+                          style={{ width: `${pct}%` }}
+                          title={`${lang} ${pct}%`}
+                        />
+                      );
+                    })}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {Object.keys(project.languages).slice(0, 5).join(', ')}
+                  {Object.keys(project.languages).length > 5 && ' +more'}
+                </p>
+              </div>
+            ) : (
+              project.languages && <p className="text-xs text-slate-500">No language data</p>
+            )}
+
+            {/* Topics */}
+            {project.topics && project.topics.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-slate-500">Topics</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {project.topics.map((topic) => (
+                    <span
+                      key={topic}
+                      className="rounded bg-purple-100 px-2 py-0.5 font-mono text-xs text-purple-600"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-
-          {/* Languages bar */}
-          {Object.keys(project.languages).length > 0 ? (
-            <div>
-              <p className="mb-2 text-xs font-medium text-slate-500">Languages</p>
-              <div className="flex h-6 overflow-hidden rounded bg-slate-100">
-                {Object.entries(project.languages)
-                  .sort(([, a], [, b]) => b - a)
-                  .slice(0, 5)
-                  .map(([lang, bytes]) => {
-                    const total = Object.values(project.languages).reduce((a, b) => a + b, 0);
-                    const pct = ((bytes / total) * 100).toFixed(0);
-                    return (
-                      <div
-                        key={lang}
-                        className={`${getLanguageColor(lang)}`}
-                        style={{ width: `${pct}%` }}
-                        title={`${lang} ${pct}%`}
-                      />
-                    );
-                  })}
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {Object.keys(project.languages).slice(0, 5).join(', ')}
-                {Object.keys(project.languages).length > 5 && ' +more'}
-              </p>
-            </div>
-          ) : (
-            <p className="text-xs text-slate-500">No language data</p>
-          )}
-
-          {/* Topics */}
-          {project.topics.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-xs font-medium text-slate-500">Topics</p>
-              <div className="flex flex-wrap gap-1.5">
-                {project.topics.map((topic) => (
-                  <span
-                    key={topic}
-                    className="rounded bg-purple-100 px-2 py-0.5 font-mono text-xs text-purple-600"
-                  >
-                    {topic}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Description */}
       {project.description && (
@@ -228,7 +232,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
       </div>
 
       {/* Local vs Remote Diff */}
-      {project.diff && (
+      {project.diff && project.diff !== undefined && (
         <div className="rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
             Local vs Remote

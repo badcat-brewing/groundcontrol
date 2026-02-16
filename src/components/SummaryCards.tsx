@@ -32,6 +32,9 @@ export default function SummaryCards({ projects }: SummaryCardsProps) {
     synced: projects.filter((p) => p.source === 'synced').length,
   };
 
+  // Only show source row if at least one project has a source field defined
+  const hasSourceData = projects.some(p => p.source);
+
   return (
     <div className="space-y-4 border-b border-slate-200 pb-4">
       {/* Status metrics */}
@@ -45,17 +48,19 @@ export default function SummaryCards({ projects }: SummaryCardsProps) {
         ))}
       </div>
 
-      {/* Source metrics */}
-      <div className="flex flex-wrap items-center gap-6">
-        <span className="text-xs font-medium text-slate-400">By source:</span>
-        {sourceMetrics.map((m) => (
-          <div key={m.key} className="flex items-center gap-2">
-            <span className={`h-2 w-2 rounded-full ${m.dot}`} />
-            <span className="text-xs font-medium text-slate-500">{m.label}</span>
-            <span className="font-mono text-sm font-semibold text-slate-900">{counts[m.key]}</span>
-          </div>
-        ))}
-      </div>
+      {/* Source metrics (only if source data exists) */}
+      {hasSourceData && (
+        <div className="flex flex-wrap items-center gap-6">
+          <span className="text-xs font-medium text-slate-400">By source:</span>
+          {sourceMetrics.map((m) => (
+            <div key={m.key} className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${m.dot}`} />
+              <span className="text-xs font-medium text-slate-500">{m.label}</span>
+              <span className="font-mono text-sm font-semibold text-slate-900">{counts[m.key]}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

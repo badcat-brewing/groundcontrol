@@ -79,7 +79,8 @@ export async function fetchRepoLanguages(octokit: Octokit, owner: string, repo: 
   try {
     const { data } = await octokit.repos.listLanguages({ owner, repo });
     return data as Record<string, number>;
-  } catch {
+  } catch (error) {
+    // Archived repos may return 403, empty repos may fail — return empty map gracefully
     return {};
   }
 }

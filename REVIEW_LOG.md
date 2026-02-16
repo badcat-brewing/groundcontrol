@@ -98,3 +98,63 @@ Solid implementation of git diff computation and source classification. Critical
 
 ---
 
+## Plan 02-01: SourceBadge Component & Table Updates
+**Reviewed**: 2026-02-16
+**Status**: ⚠️ Pending - awaiting manifest regeneration
+
+### Summary
+Excellent dashboard code quality with clean component design and seamless table integration. Build currently fails due to old manifest lacking new scanner fields. Requires fresh scan before final approval.
+
+### Findings
+
+**Code Quality:**
+- ✅ SourceBadge: Clean component structure with proper TypeScript Record types
+- ✅ Color scheme matches spec: local=slate, remote=sky, synced=emerald
+- ✅ Inline SVG icons (16x16) - folder/cloud/sync metaphors appropriate
+- ✅ Pill shape consistent with StatusBadge pattern
+- ✅ ProjectTable: Source filter integrated seamlessly with existing filters
+- ✅ Filtering logic correct (lines 59-61), useMemo deps updated (line 86)
+- ✅ Source column positioned between Name and Status per spec
+- ✅ colSpan updated to 7 (was 6)
+
+**UX/Visual Design:**
+- ✅ Visual consistency maintained with existing design system
+- ✅ Filter discoverability good (positioned with status filter)
+- ✅ Color contrast meets accessibility standards
+- ✅ Focus states preserved for keyboard navigation
+- ✅ Semantic HTML maintained
+
+**Security:**
+- ✅ No XSS vectors, type safety prevents invalid values
+- ✅ No user input rendered unsafely
+
+**Plan Compliance:**
+- ✅ Task 1: SourceBadge created with all three variants (src/components/SourceBadge.tsx)
+- ✅ Task 2: ProjectTable updated with source column and filter
+- ⚠️ Scope creep: SummaryCards source metrics implemented (should be Plan 02-02)
+- 🔴 Build verification fails: old manifest missing `source` field
+
+**Blocking Issue:**
+- Build fails with `ReferenceError` due to undefined `project.source`
+- Existing manifest is pre-Plan-01-02 (no scanner updates applied)
+- **Resolution**: Run `npm run scan` to generate manifest with new fields
+- Note: Backward compat for old manifests explicitly deferred to Plan 03-01
+
+### Required Actions Before Approval
+1. 🔴 **BLOCKING**: Run `npm run scan` to generate new manifest
+2. 🔴 **BLOCKING**: Verify `npm run build` succeeds
+3. ⚠️ **OPTIONAL**: Revert SummaryCards changes to Plan 02-02 (or accept scope creep)
+
+### Decision Log
+**Decision**: Accept scope creep (SummaryCards source metrics implemented early)
+- Rationale: Code is correct, just out of plan sequence
+- Trade-off: Makes review tracking harder, but no functional impact
+- Action: Document for future - maintain plan boundaries
+
+**Decision**: Require fresh manifest before approval (not add temp backward compat)
+- Rationale: Plan 03-01 explicitly handles backward compat
+- Trade-off: Can't test with old manifest, but prevents duplicate work
+- Action: Builder must run scanner to proceed
+
+---
+
