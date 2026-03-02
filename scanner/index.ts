@@ -6,11 +6,12 @@ import { extractDescription, extractCapabilities, detectTechStack } from './extr
 import { computeStatus } from './status';
 import { computeLocalRemoteDiff } from './diff';
 import { Project, ProjectManifest, Overrides } from './types';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { homedir } from 'os';
+import type { OnProgress } from './progress';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,32 +37,46 @@ function findLocalPath(name: string, localDir: string): string | null {
   }
 }
 
-async function main() {
-  const token = process.env.GITHUB_TOKEN;
-  const username = process.env.GITHUB_USERNAME;
-  const rawLocalDir = process.env.LOCAL_PROJECTS_DIR;
-  const localDir = rawLocalDir?.startsWith('~') ? rawLocalDir.replace('~', homedir()) : rawLocalDir;
-
-  // Parse --org flag from CLI args
-  const orgIndex = process.argv.indexOf('--org');
-  const org = orgIndex !== -1 ? process.argv[orgIndex + 1] : undefined;
-
-  if (!token || !username) {
-    console.error('Missing GITHUB_TOKEN or GITHUB_USERNAME in environment');
-    process.exit(1);
+function discoverLocalDirs(localDir: string): string[] {
+  try {
+    return readdirSync(localDir, { withFileTypes: true })
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+      .map(entry => entry.name);
+  } catch {
+    return [];
   }
+}
 
-  const target = org || username;
-  console.log(`Fetching repos for ${target}${org ? ' (org)' : ''}...`);
-  const { projects: repos, octokit, owner } = await fetchAllRepos(token, username, org);
-  console.log(`Found ${repos.length} repos on GitHub`);
+function getLastCommitDate(projectDir: string): string | null {
+  try {
+    const { execSync } = require('child_process');
+    const result = execSync('git log -1 --format=%aI', { cwd: projectDir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    return result.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export interface ScanOptions {
+  token: string;
+  username: string;
+  localDir?: string;
+  org?: string;
+  onProgress?: OnProgress;
+}
+
+export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
+  const { token, username, localDir, org, onProgress } = options;
+  const startTime = Date.now();
+
+  const { projects: repos, octokit, owner } = await fetchAllRepos(token, username, org, onProgress);
 
   const overrides = loadOverrides();
   const projects: Project[] = [];
 
-  console.log(`Enriching ${repos.length} repos (fetching languages, computing diffs for local repos)...`);
-
   for (const repo of repos) {
+    onProgress?.({ phase: 'enriching', current: projects.length + 1, total: repos.length, repoName: repo.name });
+
     const localPath = localDir ? findLocalPath(repo.name, localDir) : null;
     let local = {
       hasClaude: false,
@@ -77,7 +92,6 @@ async function main() {
     if (localPath) {
       local = readLocalProject(localPath);
     } else {
-      // Fetch CLAUDE.md, README.md, package.json from GitHub API
       const remote = await fetchRepoFiles(octokit, owner, repo.name);
       local.claudeContent = remote.claudeContent;
       local.readmeContent = remote.readmeContent;
@@ -94,13 +108,10 @@ async function main() {
     const override = overrides[repo.name] || {};
     const computed = computeStatus(repo.lastCommitDate);
 
-    // Classify source
     const source = localPath && repo.githubUrl ? 'synced' : (localPath ? 'local-only' : 'remote-only');
 
-    // Compute diff for synced repos
     let diff = null;
     if (source === 'synced' && localPath) {
-      console.log(`  Computing local-remote diff for ${repo.name}...`);
       diff = await computeLocalRemoteDiff(localPath, repo.branchNames, repo.defaultBranch);
     }
 
@@ -134,7 +145,63 @@ async function main() {
       isFork: repo.isFork,
       diff,
     });
-    if (projects.length % 5 === 0) console.log(`  ...processed ${projects.length}/${repos.length}`);
+  }
+
+  // Discover local-only projects not found on GitHub
+  if (localDir) {
+    const githubNames = new Set(repos.map(r => r.name));
+    const localDirs = discoverLocalDirs(localDir);
+    const localOnly = localDirs.filter(name => !githubNames.has(name));
+
+    for (const name of localOnly) {
+      const localPath = join(localDir, name);
+
+      // Skip non-git directories (plain files, misc folders)
+      if (!existsSync(join(localPath, '.git'))) continue;
+
+      onProgress?.({ phase: 'enriching', current: projects.length + 1, total: repos.length + localOnly.length, repoName: name });
+
+      const local = readLocalProject(localPath);
+      const docContent = local.claudeContent || local.readmeContent || '';
+      const description = extractDescription(docContent);
+      const capabilities = extractCapabilities(docContent);
+      const techStack = detectTechStack(local.dependencies, local.fileExtensions);
+
+      const override = overrides[name] || {};
+      const lastCommitDate = getLastCommitDate(localPath);
+      const computed = computeStatus(lastCommitDate);
+
+      projects.push({
+        name,
+        path: localPath,
+        githubUrl: null,
+        lastCommitDate,
+        commitCountLast30Days: 0,
+        openPRCount: 0,
+        defaultBranch: 'main',
+        branchCount: 0,
+        hasClaude: local.hasClaude,
+        hasReadme: local.hasReadme,
+        hasPlanDocs: local.hasPlanDocs,
+        hasTodos: local.hasTodos,
+        description,
+        techStack,
+        capabilities,
+        tags: override.tags || [],
+        status: override.status || null,
+        notes: override.notes || null,
+        computedStatus: override.status || computed,
+        source: 'local-only',
+        visibility: null,
+        languages: {},
+        topics: [],
+        license: null,
+        sizeKB: 0,
+        isArchived: false,
+        isFork: false,
+        diff: null,
+      });
+    }
   }
 
   // Sort: active first, then recent, stale, abandoned
@@ -146,10 +213,62 @@ async function main() {
     projects,
   };
 
+  onProgress?.({ phase: 'writing', message: 'Writing manifest...' });
   writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
-  console.log(`Wrote manifest with ${projects.length} projects to ${MANIFEST_PATH}`);
+
+  const durationMs = Date.now() - startTime;
+  onProgress?.({ phase: 'done', projectCount: projects.length, durationMs });
+
+  return manifest;
+}
+
+async function main() {
+  const token = process.env.GITHUB_TOKEN;
+  const username = process.env.GITHUB_USERNAME;
+  const rawLocalDir = process.env.LOCAL_PROJECTS_DIR;
+  const localDir = rawLocalDir?.startsWith('~') ? rawLocalDir.replace('~', homedir()) : rawLocalDir;
+
+  // Parse --org flag from CLI args
+  const orgIndex = process.argv.indexOf('--org');
+  const org = orgIndex !== -1 ? process.argv[orgIndex + 1] : undefined;
+
+  if (!token || !username) {
+    console.error('Missing GITHUB_TOKEN or GITHUB_USERNAME in environment');
+    process.exit(1);
+  }
+
+  const target = org || username;
+  console.log(`Fetching repos for ${target}${org ? ' (org)' : ''}...`);
+
+  const manifest = await runScan({
+    token,
+    username,
+    localDir,
+    org,
+    onProgress: (event) => {
+      switch (event.phase) {
+        case 'fetching':
+          if (event.current % 10 === 0 || event.current === 1) {
+            console.log(`  Fetching ${event.current}/${event.total}: ${event.repoName}`);
+          }
+          break;
+        case 'enriching':
+          if (event.current % 5 === 0 || event.current === 1) {
+            console.log(`  Enriching ${event.current}/${event.total}: ${event.repoName}`);
+          }
+          break;
+        case 'writing':
+          console.log(event.message);
+          break;
+        case 'done':
+          console.log(`Wrote manifest with ${event.projectCount} projects to ${MANIFEST_PATH}`);
+          break;
+      }
+    },
+  });
 
   // Print summary
+  const { projects } = manifest;
   const counts = projects.reduce((acc, p) => {
     acc[p.computedStatus] = (acc[p.computedStatus] || 0) + 1;
     return acc;

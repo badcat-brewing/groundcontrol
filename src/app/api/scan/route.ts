@@ -1,14 +1,66 @@
-import { exec } from 'child_process';
-import { NextResponse } from 'next/server';
+import { runScan } from '../../../../scanner/index';
+import { homedir } from 'os';
+import type { ScanProgressEvent } from '../../../../scanner/progress';
 
-export async function POST() {
-  return new Promise<NextResponse>((resolve) => {
-    exec('npm run scan', { cwd: process.cwd(), env: process.env }, (error, stdout, stderr) => {
-      if (error) {
-        resolve(NextResponse.json({ error: stderr || error.message }, { status: 500 }));
-      } else {
-        resolve(NextResponse.json({ output: stdout }));
-      }
+let scanInProgress = false;
+
+export async function GET() {
+  if (scanInProgress) {
+    return new Response(JSON.stringify({ error: 'Scan already in progress' }), {
+      status: 409,
+      headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  const token = process.env.GITHUB_TOKEN;
+  const username = process.env.GITHUB_USERNAME;
+  const rawLocalDir = process.env.LOCAL_PROJECTS_DIR;
+  const localDir = rawLocalDir?.startsWith('~') ? rawLocalDir.replace('~', homedir()) : rawLocalDir;
+
+  if (!token || !username) {
+    return new Response(JSON.stringify({ error: 'Missing GITHUB_TOKEN or GITHUB_USERNAME' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  scanInProgress = true;
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      const send = (event: ScanProgressEvent) => {
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        } catch {
+          // Client disconnected, ignore
+        }
+      };
+
+      runScan({
+        token,
+        username,
+        localDir,
+        onProgress: send,
+      })
+        .then(() => {
+          controller.close();
+        })
+        .catch((err) => {
+          send({ phase: 'error', message: err.message || 'Scan failed' });
+          controller.close();
+        })
+        .finally(() => {
+          scanInProgress = false;
+        });
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
   });
 }

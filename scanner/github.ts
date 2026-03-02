@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import type { OnProgress } from './progress';
 
 export interface PartialProject {
   name: string;
@@ -100,7 +101,7 @@ export interface FetchResult {
   owner: string;
 }
 
-export async function fetchAllRepos(token: string, username: string, org?: string): Promise<FetchResult> {
+export async function fetchAllRepos(token: string, username: string, org?: string, onProgress?: OnProgress): Promise<FetchResult> {
   const noop = () => {};
   const octokit = new Octokit({ auth: token, log: { debug: noop, info: noop, warn: noop, error: noop } });
   const owner = org || username;
@@ -111,7 +112,7 @@ export async function fetchAllRepos(token: string, username: string, org?: strin
   while (true) {
     const { data } = org
       ? await octokit.repos.listForOrg({ org, per_page: 100, sort: 'pushed', page })
-      : await octokit.repos.listForAuthenticatedUser({ per_page: 100, sort: 'pushed', affiliation: 'owner', page });
+      : await octokit.repos.listForAuthenticatedUser({ per_page: 100, sort: 'pushed', affiliation: 'owner,collaborator', page });
     if (data.length === 0) break;
     allRepos.push(...data);
     if (data.length < 100) break;
@@ -123,6 +124,8 @@ export async function fetchAllRepos(token: string, username: string, org?: strin
 
   for (const repo of allRepos) {
     const partial = transformRepoData(repo);
+
+    onProgress?.({ phase: 'fetching', current: projects.length + 1, total: allRepos.length, repoName: repo.name });
 
     const [branchNames, pulls, commits, languages] = await Promise.all([
       fetchBranchNames(octokit, owner, repo.name),
