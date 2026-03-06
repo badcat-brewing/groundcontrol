@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { useScanProgress } from '@/hooks/useScanProgress';
 
 const links = [
   { href: '/', label: 'Overview' },
@@ -10,28 +11,46 @@ const links = [
   { href: '/sync', label: 'Sync' },
 ];
 
+function formatDuration(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  return seconds >= 60 ? `${Math.floor(seconds / 60)}m${seconds % 60}s` : `${seconds}s`;
+}
+
 export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [scanning, setScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const scan = useScanProgress();
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function handleScan() {
-    setScanning(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/scan', { method: 'POST' });
-      if (!res.ok) {
-        const body = await res.json();
-        setError(body.error || 'Scan failed');
-      } else {
-        router.refresh();
-      }
-    } catch {
-      setError('Network error');
-    } finally {
-      setScanning(false);
-      setTimeout(() => setError(null), 4000);
+  // Auto-clear done/error status after 5s
+  useEffect(() => {
+    if (scan.phase === 'done' || scan.phase === 'error') {
+      clearTimerRef.current = setTimeout(() => scan.reset(), 5000);
+      return () => {
+        if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+      };
+    }
+  }, [scan.phase, scan.reset]);
+
+  // Refresh dashboard data on done
+  useEffect(() => {
+    if (scan.phase === 'done') {
+      router.refresh();
+    }
+  }, [scan.phase, router]);
+
+  const progress = scan.total > 0 ? scan.current / scan.total : 0;
+
+  let buttonText = 'Scan Now';
+  if (scan.isScanning) {
+    if (scan.phase === 'fetching') {
+      buttonText = `Fetching ${scan.current}/${scan.total}...`;
+    } else if (scan.phase === 'enriching') {
+      buttonText = `Enriching ${scan.current}/${scan.total}...`;
+    } else if (scan.phase === 'writing') {
+      buttonText = 'Writing...';
+    } else {
+      buttonText = 'Scanning...';
     }
   }
 
@@ -62,16 +81,38 @@ export default function NavBar() {
             >
               Export
             </a>
-            <button
-              onClick={handleScan}
-              disabled={scanning}
-              className="rounded-md bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400 disabled:opacity-50"
-            >
-              {scanning ? 'Scanning...' : 'Scan Now'}
-            </button>
-            {error && (
-              <span className="text-sm text-red-400">{error}</span>
-            )}
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <button
+                  onClick={scan.startScan}
+                  disabled={scan.isScanning}
+                  className="rounded-md bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400 disabled:opacity-50"
+                >
+                  {buttonText}
+                </button>
+                {scan.isScanning && (scan.phase === 'fetching' || scan.phase === 'enriching') && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-700 rounded-b-md overflow-hidden">
+                    <div
+                      className="h-full bg-sky-400 transition-all duration-300"
+                      style={{ width: `${progress * 100}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+              {scan.isScanning && scan.repoName && (
+                <span className="text-xs text-slate-400 max-w-[150px] truncate">
+                  {scan.repoName}
+                </span>
+              )}
+              {scan.phase === 'done' && scan.projectCount !== null && (
+                <span className="text-xs text-emerald-400">
+                  {scan.projectCount} projects ({formatDuration(scan.durationMs!)})
+                </span>
+              )}
+              {scan.phase === 'error' && scan.error && (
+                <span className="text-xs text-red-400">{scan.error}</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
