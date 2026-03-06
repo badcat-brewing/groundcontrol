@@ -8,6 +8,7 @@ import { useScanProgress } from '@/hooks/useScanProgress';
 const links = [
   { href: '/', label: 'Overview' },
   { href: '/overlaps', label: 'Overlaps' },
+  { href: '/sync', label: 'Sync' },
 ];
 
 function formatDuration(ms: number): string {
