@@ -9,6 +9,15 @@ function makeProject(name: string, capabilities: string[]): Project {
     hasClaude: false, hasReadme: false, hasPlanDocs: false, hasTodos: false,
     description: null, techStack: [], tags: [], status: null, notes: null,
     computedStatus: 'active' as ProjectStatus,
+    source: 'remote-only',
+    visibility: null,
+    languages: {},
+    topics: [],
+    license: null,
+    sizeKB: 0,
+    isArchived: false,
+    isFork: false,
+    diff: null,
   };
 }
 

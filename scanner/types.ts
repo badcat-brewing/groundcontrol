@@ -1,4 +1,15 @@
 export type ProjectStatus = 'active' | 'recent' | 'stale' | 'abandoned' | 'paused';
+export type ProjectSource = 'local-only' | 'remote-only' | 'synced';
+
+export interface LocalRemoteDiff {
+  localBranch: string;
+  remoteBranch: string;
+  aheadCount: number;
+  behindCount: number;
+  hasUncommittedChanges: boolean;
+  localOnlyBranches: string[];
+  remoteOnlyBranches: string[];
+}
 
 export interface Project {
   name: string;
@@ -25,6 +36,16 @@ export interface Project {
   notes: string | null;
 
   computedStatus: ProjectStatus;
+
+  source: ProjectSource;
+  visibility: 'public' | 'private' | null;
+  languages: Record<string, number>;
+  topics: string[];
+  license: string | null;
+  sizeKB: number;
+  isArchived: boolean;
+  isFork: boolean;
+  diff: LocalRemoteDiff | null;
 }
 
 export interface ProjectManifest {

@@ -1,6 +1,7 @@
 import StatusBadge from './StatusBadge';
+import SourceBadge from './SourceBadge';
 import ProjectEditor from './ProjectEditor';
-import { Project } from '../../scanner/types';
+import { Project, ProjectSource, LocalRemoteDiff } from '../../scanner/types';
 import { timeAgo } from '@/lib/utils';
 
 interface ProjectDetailProps {
@@ -24,6 +25,30 @@ function DocIndicator({ label, has }: { label: string; has: boolean }) {
       )}
     </div>
   );
+}
+
+const languageColors: Record<string, string> = {
+  TypeScript: 'bg-blue-400',
+  JavaScript: 'bg-yellow-400',
+  Python: 'bg-green-500',
+  Go: 'bg-cyan-400',
+  Rust: 'bg-orange-500',
+  Java: 'bg-red-500',
+  C: 'bg-gray-600',
+  'C++': 'bg-blue-600',
+  PHP: 'bg-purple-500',
+  Ruby: 'bg-red-600',
+};
+
+function getLanguageColor(lang: string): string {
+  return languageColors[lang] || 'bg-slate-400';
+}
+
+function formatSize(sizeKB: number): string {
+  if (sizeKB > 1024) {
+    return `${(sizeKB / 1024).toFixed(1)} MB`;
+  }
+  return `${sizeKB} KB`;
 }
 
 export default function ProjectDetail({ project }: ProjectDetailProps) {
@@ -60,6 +85,99 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
           </a>
         )}
       </div>
+
+      {/* Source & Remote Metadata (only if source or other new fields exist) */}
+      {(project.source || project.visibility || project.isArchived || project.isFork || project.license || (project.languages && Object.keys(project.languages).length > 0) || (project.topics && project.topics.length > 0)) && (
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
+            Source & Remote Metadata
+          </h2>
+          <div className="space-y-3">
+            {/* Source badge and metadata row 1 */}
+            <div className="flex flex-wrap items-center gap-3">
+              {project.source && <SourceBadge source={project.source} />}
+              {project.visibility && (
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${project.visibility === 'public' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                  {project.visibility === 'public' ? 'Public' : 'Private'}
+                </span>
+              )}
+              {project.isArchived && (
+                <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-600">
+                  Archived
+                </span>
+              )}
+              {project.isFork && (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                  Fork
+                </span>
+              )}
+            </div>
+
+            {/* Size and License */}
+            <div className="flex flex-wrap gap-4">
+              {project.sizeKB !== undefined && (
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Size</p>
+                  <p className="text-sm text-slate-900">{formatSize(project.sizeKB)}</p>
+                </div>
+              )}
+              {project.license && (
+                <div>
+                  <p className="text-xs font-medium text-slate-500">License</p>
+                  <p className="text-sm text-slate-900">{project.license}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Languages bar */}
+            {project.languages && Object.keys(project.languages).length > 0 ? (
+              <div>
+                <p className="mb-2 text-xs font-medium text-slate-500">Languages</p>
+                <div className="flex h-6 overflow-hidden rounded bg-slate-100">
+                  {Object.entries(project.languages)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 5)
+                    .map(([lang, bytes]) => {
+                      const total = Object.values(project.languages).reduce((a, b) => a + b, 0);
+                      const pct = ((bytes / total) * 100).toFixed(0);
+                      return (
+                        <div
+                          key={lang}
+                          className={`${getLanguageColor(lang)}`}
+                          style={{ width: `${pct}%` }}
+                          title={`${lang} ${pct}%`}
+                        />
+                      );
+                    })}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {Object.keys(project.languages).slice(0, 5).join(', ')}
+                  {Object.keys(project.languages).length > 5 && ' +more'}
+                </p>
+              </div>
+            ) : (
+              project.languages && <p className="text-xs text-slate-500">No language data</p>
+            )}
+
+            {/* Topics */}
+            {project.topics && project.topics.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-slate-500">Topics</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {project.topics.map((topic) => (
+                    <span
+                      key={topic}
+                      className="rounded bg-purple-100 px-2 py-0.5 font-mono text-xs text-purple-600"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Description */}
       {project.description && (
@@ -112,6 +230,86 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
           </div>
         </div>
       </div>
+
+      {/* Local vs Remote Diff */}
+      {project.diff && project.diff !== undefined && (
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
+            Local vs Remote
+          </h2>
+          <div className="space-y-3">
+            {/* Branch info */}
+            <div className="flex flex-wrap gap-4">
+              <div>
+                <p className="text-xs font-medium text-slate-500">Local Branch</p>
+                <p className="font-mono text-sm text-slate-900">{project.diff.localBranch}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500">Remote Branch</p>
+                <p className="font-mono text-sm text-slate-900">origin/{project.diff.remoteBranch}</p>
+              </div>
+            </div>
+
+            {/* Ahead/Behind */}
+            <div>
+              <p className="mb-1 text-xs font-medium text-slate-500">Commits Status</p>
+              {project.diff.aheadCount === 0 && project.diff.behindCount === 0 ? (
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-xs font-medium text-green-700">Up to date</span>
+                </div>
+              ) : (
+                <div className="text-sm text-slate-700">
+                  {project.diff.aheadCount > 0 && (
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700 mr-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      {project.diff.aheadCount} ahead
+                    </div>
+                  )}
+                  {project.diff.behindCount > 0 && (
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      {project.diff.behindCount} behind
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Uncommitted changes */}
+            <div>
+              <p className="mb-1 text-xs font-medium text-slate-500">Working Tree</p>
+              {project.diff.hasUncommittedChanges ? (
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="text-xs font-medium text-amber-700">Uncommitted changes</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-xs font-medium text-green-700">Clean</span>
+                </div>
+              )}
+            </div>
+
+            {/* Local-only branches */}
+            {project.diff.localOnlyBranches.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-medium text-slate-500">Local-only branches</p>
+                <p className="text-sm text-slate-700">{project.diff.localOnlyBranches.join(', ')}</p>
+              </div>
+            )}
+
+            {/* Remote-only branches */}
+            {project.diff.remoteOnlyBranches.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-medium text-slate-500">Remote-only branches</p>
+                <p className="text-sm text-slate-700">{project.diff.remoteOnlyBranches.join(', ')}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Metadata */}
       <div className="rounded-lg border border-slate-200 bg-white p-5">
