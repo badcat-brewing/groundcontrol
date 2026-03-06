@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { NextRequest } from 'next/server';
@@ -30,9 +30,10 @@ async function cloneRepo(writer: Writer, githubUrl: string, targetDir: string, i
     return;
   }
 
+  const cloneUrl = githubUrl.endsWith('.git') ? githubUrl : `${githubUrl}.git`;
   await send(writer, 'log', { text: `[${index}/${total}] ${name} — cloning from ${githubUrl}...` });
   try {
-    execSync(`git clone ${githubUrl}.git ${JSON.stringify(dest)}`, { encoding: 'utf-8', timeout: 120000 });
+    execFileSync('git', ['clone', cloneUrl, dest], { encoding: 'utf-8', timeout: 120000 });
     await send(writer, 'log', { text: `[${index}/${total}] ${name} — cloned successfully` });
     await send(writer, 'result', { name, action: 'cloned', success: true, message: 'Cloned successfully' });
   } catch (err: unknown) {
@@ -80,7 +81,14 @@ async function pullRepo(writer: Writer, repoPath: string, name: string, index: n
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { action } = body as { action: 'clone' | 'pull' | 'both' };
+  const { action } = body as { action: string };
+
+  if (!['clone', 'pull', 'both'].includes(action)) {
+    return new Response(JSON.stringify({ error: 'Invalid action. Must be clone, pull, or both.' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
   const localDir = process.env.LOCAL_PROJECTS_DIR;
   if (!localDir) {
