@@ -7,6 +7,7 @@ import { useState } from 'react';
 const links = [
   { href: '/', label: 'Overview' },
   { href: '/overlaps', label: 'Overlaps' },
+  { href: '/sync', label: 'Sync' },
 ];
 
 export default function NavBar() {

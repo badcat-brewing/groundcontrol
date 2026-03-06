@@ -87,7 +87,7 @@ export async function fetchAllRepos(token: string, username: string, org?: strin
     allRepos.push(...data.map(r => ({
       name: r.name,
       html_url: r.html_url,
-      default_branch: r.default_branch,
+      default_branch: r.default_branch ?? 'main',
       pushed_at: r.pushed_at ?? null,
     })));
     if (data.length < 100) break;
