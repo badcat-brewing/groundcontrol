@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "scan": "tsx scanner/index.ts",
+    "pm": "tsx scanner/cli.ts",
     "test": "vitest run"
   },
   "dependencies": {
