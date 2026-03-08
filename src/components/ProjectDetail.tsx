@@ -111,7 +111,20 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
                   Fork
                 </span>
               )}
+              {project.hasStaleRemote && (
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-600">
+                  Stale Remote
+                </span>
+              )}
             </div>
+
+            {/* Remote URL */}
+            {project.remoteUrl && (
+              <div>
+                <p className="text-xs font-medium text-slate-500">Remote URL</p>
+                <p className="font-mono text-sm text-slate-900">{project.remoteUrl}</p>
+              </div>
+            )}
 
             {/* Size and License */}
             <div className="flex flex-wrap gap-4">
