@@ -37,6 +37,9 @@ yarn-error.log*
 # data
 data/manifest.json
 
+# worktrees
+.worktrees/
+
 # vercel
 .vercel
 
