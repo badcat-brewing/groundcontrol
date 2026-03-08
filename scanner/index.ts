@@ -5,6 +5,7 @@ import { readLocalProject } from './local';
 import { extractDescription, extractCapabilities, detectTechStack } from './extractor';
 import { computeStatus } from './status';
 import { computeLocalRemoteDiff } from './diff';
+import { getGitRemoteUrl } from './remote-detect';
 import { Project, ProjectManifest } from './types';
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
@@ -102,6 +103,15 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
     }
   }
 
+  // Build owner/repo -> index lookup from GitHub repos for remote URL matching
+  const repoLookup = new Map<string, number>();
+  for (let i = 0; i < repos.length; i++) {
+    const r = repos[i];
+    const owner = r.owner;
+    const repoName = r.name.includes('/') ? r.name.split('/').slice(1).join('/') : r.name;
+    repoLookup.set(`${owner}/${repoName}`.toLowerCase(), i);
+  }
+
   const overrides = loadOverrides();
   const projects: Project[] = [];
 
@@ -120,6 +130,7 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
       readmeContent: null as string | null,
       fileExtensions: [] as string[],
       dependencies: {} as Record<string, string>,
+      whatsNextContent: null as string | null,
     };
 
     if (localPath) {
@@ -142,6 +153,11 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
     const computed = computeStatus(repo.lastCommitDate);
 
     const source = localPath && repo.githubUrl ? 'synced' : (localPath ? 'local-only' : 'remote-only');
+
+    // Detect remote URL and stale remote for synced/local repos
+    const remoteInfo = localPath ? getGitRemoteUrl(localPath) : null;
+    const hasStaleRemote = !!(remoteInfo && localPath && repo.githubUrl &&
+      remoteInfo.repo.toLowerCase() !== repoBaseName.toLowerCase());
 
     let diff = null;
     if (source === 'synced' && localPath) {
@@ -177,10 +193,14 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
       isArchived: repo.isArchived,
       isFork: repo.isFork,
       diff,
+      remoteUrl: remoteInfo?.url ?? null,
+      hasStaleRemote,
+      whatsNext: local.whatsNextContent ?? null,
     });
   }
 
   // Discover local-only projects not found on GitHub
+  // Uses git remote URL matching to associate local dirs with GitHub repos
   if (localDir) {
     // Include both full names (org/repo) and base names for matching against local dirs
     const githubNames = new Set<string>();
@@ -190,6 +210,9 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
         githubNames.add(r.name.split('/').slice(1).join('/'));
       }
     }
+    // Track which repos have already been matched to a local path (by name)
+    const matchedRepoIndices = new Set<number>();
+
     const localDirs = discoverLocalDirs(localDir);
     const localOnly = localDirs.filter(name => !githubNames.has(name));
 
@@ -201,6 +224,34 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
 
       onProgress?.({ phase: 'enriching', current: projects.length + 1, total: repos.length + localOnly.length, repoName: name });
 
+      // Try to match via git remote URL
+      const remoteInfo = getGitRemoteUrl(localPath);
+      if (remoteInfo) {
+        const lookupKey = `${remoteInfo.owner}/${remoteInfo.repo}`.toLowerCase();
+        const repoIdx = repoLookup.get(lookupKey);
+
+        if (repoIdx !== undefined && !matchedRepoIndices.has(repoIdx)) {
+          // Found a match — update the existing project entry to be synced
+          matchedRepoIndices.add(repoIdx);
+          const existingProject = projects.find(p => p.name === repos[repoIdx].name);
+          if (existingProject) {
+            const local = readLocalProject(localPath);
+            existingProject.path = localPath;
+            existingProject.source = 'synced';
+            existingProject.hasClaude = local.hasClaude;
+            existingProject.hasReadme = local.hasReadme;
+            existingProject.hasPlanDocs = local.hasPlanDocs;
+            existingProject.hasTodos = local.hasTodos;
+            existingProject.remoteUrl = remoteInfo.url;
+            existingProject.hasStaleRemote = remoteInfo.repo.toLowerCase() !== (repos[repoIdx].name.includes('/') ? repos[repoIdx].name.split('/').slice(1).join('/') : repos[repoIdx].name).toLowerCase();
+            existingProject.whatsNext = local.whatsNextContent ?? null;
+            existingProject.diff = await computeLocalRemoteDiff(localPath, repos[repoIdx].branchNames, repos[repoIdx].defaultBranch);
+          }
+          continue;
+        }
+      }
+
+      // No match in scanned repos
       const local = readLocalProject(localPath);
       const docContent = local.claudeContent || local.readmeContent || '';
       const description = extractDescription(docContent);
@@ -210,6 +261,9 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
       const override = overrides[name] || {};
       const lastCommitDate = getLastCommitDate(localPath);
       const computed = computeStatus(lastCommitDate);
+
+      // Determine source: has-remote if git remote exists but not in scan, local-only otherwise
+      const source = remoteInfo ? 'has-remote' as const : 'local-only' as const;
 
       projects.push({
         name,
@@ -231,7 +285,7 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
         status: override.status || null,
         notes: override.notes || null,
         computedStatus: override.status || computed,
-        source: 'local-only',
+        source,
         visibility: null,
         languages: {},
         topics: [],
@@ -240,6 +294,9 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
         isArchived: false,
         isFork: false,
         diff: null,
+        remoteUrl: remoteInfo?.url ?? null,
+        hasStaleRemote: false,
+        whatsNext: local.whatsNextContent ?? null,
       });
     }
   }
@@ -338,12 +395,16 @@ async function main() {
     'local-only': projects.filter(p => p.source === 'local-only').length,
     'remote-only': projects.filter(p => p.source === 'remote-only').length,
     synced: projects.filter(p => p.source === 'synced').length,
+    'has-remote': projects.filter(p => p.source === 'has-remote').length,
   };
 
   console.log('\nSource breakdown:');
   console.log(`  Local only: ${sourceBreakdown['local-only']}`);
   console.log(`  Remote only: ${sourceBreakdown['remote-only']}`);
   console.log(`  Synced: ${sourceBreakdown.synced}`);
+  if (sourceBreakdown['has-remote'] > 0) {
+    console.log(`  Has remote: ${sourceBreakdown['has-remote']}`);
+  }
 
   // Log fork count
   const forkCount = projects.filter(p => p.isFork).length;
