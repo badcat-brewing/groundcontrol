@@ -120,6 +120,7 @@ export default function ProjectTable({ projects }: ProjectTableProps) {
           <option value="local-only">Local only</option>
           <option value="remote-only">Remote only</option>
           <option value="synced">Synced</option>
+          <option value="has-remote">Has Remote</option>
         </select>
       </div>
 
