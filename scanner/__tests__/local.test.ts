@@ -54,6 +54,18 @@ describe('readLocalProject', () => {
     expect(result.dependencies).toHaveProperty('vitest');
   });
 
+  it('reads .groundcontrol/WHATS-NEXT.md', () => {
+    mkdirSync(join(TEST_DIR, '.groundcontrol'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.groundcontrol', 'WHATS-NEXT.md'), '## Next Steps\n\n- Build the thing');
+    const result = readLocalProject(TEST_DIR);
+    expect(result.whatsNextContent).toContain('Build the thing');
+  });
+
+  it('returns null whatsNextContent when file does not exist', () => {
+    const result = readLocalProject(TEST_DIR);
+    expect(result.whatsNextContent).toBeNull();
+  });
+
   it('returns sensible defaults for empty directory', () => {
     const result = readLocalProject(TEST_DIR);
     expect(result.hasClaude).toBe(false);
