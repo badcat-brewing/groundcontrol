@@ -10,6 +10,7 @@ export interface LocalProjectData {
   readmeContent: string | null;
   fileExtensions: string[];
   dependencies: Record<string, string>;
+  whatsNextContent: string | null;
 }
 
 function readFileOrNull(path: string): string | null {
@@ -71,6 +72,8 @@ export function readLocalProject(projectDir: string): LocalProjectData {
     }
   }
 
+  const whatsNextContent = readFileOrNull(join(projectDir, '.groundcontrol', 'WHATS-NEXT.md'));
+
   return {
     hasClaude: claudeContent !== null,
     hasReadme: readmeContent !== null,
@@ -80,5 +83,6 @@ export function readLocalProject(projectDir: string): LocalProjectData {
     readmeContent,
     fileExtensions: collectExtensions(projectDir),
     dependencies,
+    whatsNextContent,
   };
 }

@@ -1,5 +1,5 @@
 export type ProjectStatus = 'active' | 'recent' | 'stale' | 'abandoned' | 'paused';
-export type ProjectSource = 'local-only' | 'remote-only' | 'synced';
+export type ProjectSource = 'local-only' | 'remote-only' | 'synced' | 'has-remote';
 
 export interface LocalRemoteDiff {
   localBranch: string;
@@ -46,6 +46,9 @@ export interface Project {
   isArchived: boolean;
   isFork: boolean;
   diff: LocalRemoteDiff | null;
+  remoteUrl: string | null;
+  hasStaleRemote: boolean;
+  whatsNext: string | null;
 }
 
 export interface ProjectManifest {
