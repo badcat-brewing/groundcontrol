@@ -15,8 +15,9 @@ describe('transformRepoData', () => {
       license: { spdx_id: 'MIT' },
       topics: ['javascript'],
     };
-    const result = transformRepoData(repo);
+    const result = transformRepoData(repo, 'user');
     expect(result.name).toBe('my-project');
+    expect(result.owner).toBe('user');
     expect(result.githubUrl).toBe('https://github.com/user/my-project');
     expect(result.defaultBranch).toBe('main');
     expect(result.lastCommitDate).toBe('2026-02-10T00:00:00Z');
@@ -42,7 +43,7 @@ describe('transformRepoData', () => {
       license: null,
       topics: [],
     };
-    const result = transformRepoData(repo);
+    const result = transformRepoData(repo, 'user');
     expect(result.lastCommitDate).toBeNull();
   });
 });

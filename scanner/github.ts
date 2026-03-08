@@ -3,6 +3,7 @@ import type { OnProgress } from './progress';
 
 export interface PartialProject {
   name: string;
+  owner: string;
   githubUrl: string;
   defaultBranch: string;
   lastCommitDate: string | null;
@@ -19,10 +20,11 @@ export interface PartialProject {
   isFork: boolean;
 }
 
-export function transformRepoData(repo: any): PartialProject {
+export function transformRepoData(repo: any, owner: string): PartialProject {
   const visibility = repo.visibility ? repo.visibility : (repo.private ? 'private' : 'public');
   return {
     name: repo.name,
+    owner,
     githubUrl: repo.html_url,
     defaultBranch: repo.default_branch || 'main',
     lastCommitDate: repo.pushed_at || null,
@@ -123,7 +125,7 @@ export async function fetchAllRepos(token: string, username: string, org?: strin
   const projects: PartialProject[] = [];
 
   for (const repo of allRepos) {
-    const partial = transformRepoData(repo);
+    const partial = transformRepoData(repo, owner);
 
     onProgress?.({ phase: 'fetching', current: projects.length + 1, total: allRepos.length, repoName: repo.name });
 

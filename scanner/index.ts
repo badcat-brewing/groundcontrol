@@ -1,11 +1,11 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
-import { fetchAllRepos, fetchRepoFiles } from './github';
+import { fetchAllRepos, fetchRepoFiles, type PartialProject, type FetchResult } from './github';
 import { readLocalProject } from './local';
 import { extractDescription, extractCapabilities, detectTechStack } from './extractor';
 import { computeStatus } from './status';
 import { computeLocalRemoteDiff } from './diff';
-import { Project, ProjectManifest, Overrides } from './types';
+import { Project, ProjectManifest } from './types';
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
@@ -16,17 +16,10 @@ import type { OnProgress } from './progress';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+import { loadOverrides } from './overrides';
+
 const DATA_DIR = join(__dirname, '..', 'data');
 const MANIFEST_PATH = join(DATA_DIR, 'manifest.json');
-const OVERRIDES_PATH = join(DATA_DIR, 'overrides.json');
-
-function loadOverrides(): Overrides {
-  try {
-    return JSON.parse(readFileSync(OVERRIDES_PATH, 'utf-8'));
-  } catch {
-    return {};
-  }
-}
 
 function findLocalPath(name: string, localDir: string): string | null {
   const candidate = join(localDir, name);
@@ -62,14 +55,52 @@ export interface ScanOptions {
   username: string;
   localDir?: string;
   org?: string;
+  orgs?: string[];
   onProgress?: OnProgress;
 }
 
 export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
-  const { token, username, localDir, org, onProgress } = options;
+  const { token, username, localDir, org, orgs, onProgress } = options;
   const startTime = Date.now();
 
-  const { projects: repos, octokit, owner } = await fetchAllRepos(token, username, org, onProgress);
+  // Build list of all orgs to scan (merge --org flag and orgs array, dedup)
+  const allOrgs = new Set<string>();
+  if (org) allOrgs.add(org);
+  if (orgs) orgs.forEach(o => allOrgs.add(o));
+
+  const repos: PartialProject[] = [];
+  let octokit: FetchResult['octokit'] | null = null;
+  const seenRepoKeys = new Set<string>();
+
+  // Legacy single-org mode: --org flag with no orgs array fetches ONLY that org (backward compat)
+  const legacySingleOrg = org && !orgs;
+
+  if (!legacySingleOrg) {
+    // Fetch user repos
+    const userResult = await fetchAllRepos(token, username, undefined, onProgress);
+    octokit = userResult.octokit;
+    for (const repo of userResult.projects) {
+      repos.push(repo);
+      seenRepoKeys.add(repo.name);
+    }
+  }
+
+  // Fetch repos for each org
+  for (const orgName of allOrgs) {
+    onProgress?.({ phase: 'fetching', current: 0, total: 0, repoName: `org: ${orgName}` });
+    const orgResult = await fetchAllRepos(token, username, orgName, onProgress);
+    if (!octokit) octokit = orgResult.octokit;
+
+    for (const repo of orgResult.projects) {
+      // Prefix org repos with org/repo to avoid name collisions with user repos
+      const prefixedName = legacySingleOrg ? repo.name : `${orgName}/${repo.name}`;
+      if (!seenRepoKeys.has(prefixedName)) {
+        repo.name = prefixedName;
+        repos.push(repo);
+        seenRepoKeys.add(prefixedName);
+      }
+    }
+  }
 
   const overrides = loadOverrides();
   const projects: Project[] = [];
@@ -77,7 +108,9 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
   for (const repo of repos) {
     onProgress?.({ phase: 'enriching', current: projects.length + 1, total: repos.length, repoName: repo.name });
 
-    const localPath = localDir ? findLocalPath(repo.name, localDir) : null;
+    // For org-prefixed repos (org/repo), look up local path by just the repo name
+    const repoBaseName = repo.name.includes('/') ? repo.name.split('/').slice(1).join('/') : repo.name;
+    const localPath = localDir ? findLocalPath(repoBaseName, localDir) : null;
     let local = {
       hasClaude: false,
       hasReadme: false,
@@ -92,7 +125,7 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
     if (localPath) {
       local = readLocalProject(localPath);
     } else {
-      const remote = await fetchRepoFiles(octokit, owner, repo.name);
+      const remote = await fetchRepoFiles(octokit!, repo.owner, repoBaseName);
       local.claudeContent = remote.claudeContent;
       local.readmeContent = remote.readmeContent;
       local.hasClaude = remote.claudeContent !== null;
@@ -149,7 +182,14 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
 
   // Discover local-only projects not found on GitHub
   if (localDir) {
-    const githubNames = new Set(repos.map(r => r.name));
+    // Include both full names (org/repo) and base names for matching against local dirs
+    const githubNames = new Set<string>();
+    for (const r of repos) {
+      githubNames.add(r.name);
+      if (r.name.includes('/')) {
+        githubNames.add(r.name.split('/').slice(1).join('/'));
+      }
+    }
     const localDirs = discoverLocalDirs(localDir);
     const localOnly = localDirs.filter(name => !githubNames.has(name));
 
@@ -232,19 +272,33 @@ async function main() {
   const orgIndex = process.argv.indexOf('--org');
   const org = orgIndex !== -1 ? process.argv[orgIndex + 1] : undefined;
 
+  // Parse GITHUB_ORGS env var (comma-separated)
+  const rawOrgs = process.env.GITHUB_ORGS;
+  const orgs = rawOrgs
+    ? rawOrgs.split(',').map(o => o.trim()).filter(o => o.length > 0)
+    : undefined;
+
+  // If --org is provided and orgs array exists, merge it in
+  if (org && orgs && !orgs.includes(org)) {
+    orgs.push(org);
+  }
+
   if (!token || !username) {
     console.error('Missing GITHUB_TOKEN or GITHUB_USERNAME in environment');
     process.exit(1);
   }
 
-  const target = org || username;
-  console.log(`Fetching repos for ${target}${org ? ' (org)' : ''}...`);
+  const targets = [username];
+  if (orgs?.length) targets.push(...orgs.map(o => `org:${o}`));
+  else if (org) targets.push(`org:${org}`);
+  console.log(`Scanning repos for: ${targets.join(', ')}...`);
 
   const manifest = await runScan({
     token,
     username,
     localDir,
-    org,
+    org: orgs ? undefined : org,
+    orgs,
     onProgress: (event) => {
       switch (event.phase) {
         case 'fetching':
@@ -298,7 +352,13 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error('Scanner failed:', err);
-  process.exit(1);
-});
+// Only run main() when this file is executed directly (not imported)
+const isDirectRun = process.argv[1] &&
+  (process.argv[1].endsWith('scanner/index.ts') || process.argv[1].endsWith('scanner/index.js'));
+
+if (isDirectRun) {
+  main().catch(err => {
+    console.error('Scanner failed:', err);
+    process.exit(1);
+  });
+}

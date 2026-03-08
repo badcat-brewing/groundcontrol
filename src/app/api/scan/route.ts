@@ -17,6 +17,12 @@ export async function GET() {
   const rawLocalDir = process.env.LOCAL_PROJECTS_DIR;
   const localDir = rawLocalDir?.startsWith('~') ? rawLocalDir.replace('~', homedir()) : rawLocalDir;
 
+  // Parse GITHUB_ORGS env var (comma-separated)
+  const rawOrgs = process.env.GITHUB_ORGS;
+  const orgs = rawOrgs
+    ? rawOrgs.split(',').map(o => o.trim()).filter(o => o.length > 0)
+    : undefined;
+
   if (!token || !username) {
     return new Response(JSON.stringify({ error: 'Missing GITHUB_TOKEN or GITHUB_USERNAME' }), {
       status: 500,
@@ -41,6 +47,7 @@ export async function GET() {
         token,
         username,
         localDir,
+        orgs,
         onProgress: send,
       })
         .then(() => {
