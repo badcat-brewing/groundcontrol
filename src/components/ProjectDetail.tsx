@@ -1,6 +1,10 @@
+'use client';
+
+import { useState } from 'react';
 import StatusBadge from './StatusBadge';
 import SourceBadge from './SourceBadge';
 import ProjectEditor from './ProjectEditor';
+import CreateRemoteModal from './CreateRemoteModal';
 import { Project, ProjectSource, LocalRemoteDiff } from '../../scanner/types';
 import { timeAgo } from '@/lib/utils';
 
@@ -52,6 +56,8 @@ function formatSize(sizeKB: number): string {
 }
 
 export default function ProjectDetail({ project }: ProjectDetailProps) {
+  const [showCreateRemote, setShowCreateRemote] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -83,6 +89,15 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
             </svg>
             View on GitHub
           </a>
+        )}
+        {project.source === 'local-only' && (
+          <button
+            type="button"
+            onClick={() => setShowCreateRemote(true)}
+            className="inline-flex items-center gap-1.5 rounded-md bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400"
+          >
+            Create Remote
+          </button>
         )}
       </div>
 
@@ -420,6 +435,17 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
         initialStatus={project.status}
         initialNotes={project.notes}
       />
+
+      {showCreateRemote && (
+        <CreateRemoteModal
+          projectName={project.name}
+          onClose={() => setShowCreateRemote(false)}
+          onCreated={() => {
+            setShowCreateRemote(false);
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }
