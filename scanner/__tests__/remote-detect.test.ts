@@ -26,4 +26,19 @@ describe('parseGitRemoteUrl', () => {
     const result = parseGitRemoteUrl('');
     expect(result).toBeNull();
   });
+
+  it('detects owner mismatch (transferred repo)', () => {
+    const localRemote = parseGitRemoteUrl('https://github.com/frydzewski/groundcontrol.git');
+    const actualOwner = 'badcat-brewing';
+    expect(localRemote).not.toBeNull();
+    expect(localRemote!.owner).toBe('frydzewski');
+    expect(localRemote!.owner).not.toBe(actualOwner);
+    expect(localRemote!.repo).toBe('groundcontrol');
+  });
+
+  it('detects matching owner (no transfer)', () => {
+    const localRemote = parseGitRemoteUrl('https://github.com/badcat-brewing/groundcontrol.git');
+    const actualOwner = 'badcat-brewing';
+    expect(localRemote!.owner).toBe(actualOwner);
+  });
 });

@@ -155,9 +155,13 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
     const source = localPath && repo.githubUrl ? 'synced' : (localPath ? 'local-only' : 'remote-only');
 
     // Detect remote URL and stale remote for synced/local repos
+    // Stale = local remote points to different owner OR repo name than GitHub API reports
     const remoteInfo = localPath ? getGitRemoteUrl(localPath) : null;
-    const hasStaleRemote = !!(remoteInfo && localPath && repo.githubUrl &&
-      remoteInfo.repo.toLowerCase() !== repoBaseName.toLowerCase());
+    const expectedRemoteUrl = repo.githubUrl ? `${repo.githubUrl}.git` : null;
+    const hasStaleRemote = !!(remoteInfo && localPath && repo.githubUrl && (
+      remoteInfo.owner.toLowerCase() !== repo.owner.toLowerCase() ||
+      remoteInfo.repo.toLowerCase() !== repoBaseName.toLowerCase()
+    ));
 
     let diff = null;
     if (source === 'synced' && localPath) {
@@ -195,6 +199,7 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
       diff,
       remoteUrl: remoteInfo?.url ?? null,
       hasStaleRemote,
+      expectedRemoteUrl: hasStaleRemote ? expectedRemoteUrl : null,
       whatsNext: local.whatsNextContent ?? null,
     });
   }
@@ -243,7 +248,15 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
             existingProject.hasPlanDocs = local.hasPlanDocs;
             existingProject.hasTodos = local.hasTodos;
             existingProject.remoteUrl = remoteInfo.url;
-            existingProject.hasStaleRemote = remoteInfo.repo.toLowerCase() !== (repos[repoIdx].name.includes('/') ? repos[repoIdx].name.split('/').slice(1).join('/') : repos[repoIdx].name).toLowerCase();
+            const matchedRepoBaseName = repos[repoIdx].name.includes('/') ? repos[repoIdx].name.split('/').slice(1).join('/') : repos[repoIdx].name;
+            const matchedRepoOwner = repos[repoIdx].owner;
+            existingProject.hasStaleRemote = (
+              remoteInfo.owner.toLowerCase() !== matchedRepoOwner.toLowerCase() ||
+              remoteInfo.repo.toLowerCase() !== matchedRepoBaseName.toLowerCase()
+            );
+            existingProject.expectedRemoteUrl = existingProject.hasStaleRemote
+              ? `https://github.com/${matchedRepoOwner}/${matchedRepoBaseName}.git`
+              : null;
             existingProject.whatsNext = local.whatsNextContent ?? null;
             existingProject.diff = await computeLocalRemoteDiff(localPath, repos[repoIdx].branchNames, repos[repoIdx].defaultBranch);
           }
@@ -296,6 +309,7 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
         diff: null,
         remoteUrl: remoteInfo?.url ?? null,
         hasStaleRemote: false,
+        expectedRemoteUrl: null,
         whatsNext: local.whatsNextContent ?? null,
       });
     }
@@ -410,6 +424,18 @@ async function main() {
   const forkCount = projects.filter(p => p.isFork).length;
   if (forkCount > 0) {
     console.log(`\nFound ${forkCount} forks`);
+  }
+
+  // Warn about stale remotes
+  const staleRemotes = projects.filter(p => p.hasStaleRemote);
+  if (staleRemotes.length > 0) {
+    console.log(`\n⚠ ${staleRemotes.length} project(s) with stale git remotes:`);
+    for (const p of staleRemotes) {
+      console.log(`  ${p.name}: ${p.remoteUrl} → ${p.expectedRemoteUrl}`);
+      if (p.path) {
+        console.log(`    Fix: cd ${p.path} && git remote set-url origin ${p.expectedRemoteUrl}`);
+      }
+    }
   }
 }
 

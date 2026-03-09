@@ -48,6 +48,7 @@ export interface Project {
   diff: LocalRemoteDiff | null;
   remoteUrl: string | null;
   hasStaleRemote: boolean;
+  expectedRemoteUrl: string | null;
   whatsNext: string | null;
 }
 

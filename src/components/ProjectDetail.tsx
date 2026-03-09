@@ -134,8 +134,27 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
               )}
             </div>
 
-            {/* Remote URL */}
-            {project.remoteUrl && (
+            {/* Stale remote fix instructions */}
+            {project.hasStaleRemote && project.remoteUrl && project.expectedRemoteUrl && project.path && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                <p className="mb-1 text-xs font-medium text-amber-700">Local remote URL is out of date</p>
+                <div className="space-y-1">
+                  <p className="text-xs text-amber-600">
+                    Points to: <code className="rounded bg-amber-100 px-1 font-mono">{project.remoteUrl}</code>
+                  </p>
+                  <p className="text-xs text-amber-600">
+                    Should be: <code className="rounded bg-amber-100 px-1 font-mono">{project.expectedRemoteUrl}</code>
+                  </p>
+                </div>
+                <p className="mt-2 text-xs font-medium text-amber-700">Fix with:</p>
+                <code className="mt-1 block rounded bg-amber-100 px-2 py-1 font-mono text-xs text-amber-800">
+                  cd {project.path} && git remote set-url origin {project.expectedRemoteUrl}
+                </code>
+              </div>
+            )}
+
+            {/* Remote URL (when not stale) */}
+            {project.remoteUrl && !project.hasStaleRemote && (
               <div>
                 <p className="text-xs font-medium text-slate-500">Remote URL</p>
                 <p className="font-mono text-sm text-slate-900">{project.remoteUrl}</p>
