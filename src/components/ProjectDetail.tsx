@@ -5,6 +5,7 @@ import StatusBadge from './StatusBadge';
 import SourceBadge from './SourceBadge';
 import ProjectEditor from './ProjectEditor';
 import CreateRemoteModal from './CreateRemoteModal';
+import WhatsNext from './WhatsNext';
 import { Project, ProjectSource, LocalRemoteDiff } from '../../scanner/types';
 import { timeAgo } from '@/lib/utils';
 
@@ -415,6 +416,13 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
           <p className="whitespace-pre-wrap text-slate-700">{project.notes}</p>
         </div>
       )}
+
+      {/* What's Next */}
+      <WhatsNext
+        projectName={project.name}
+        initialContent={project.whatsNext}
+        hasLocalPath={!!project.path}
+      />
 
       {/* Local Path */}
       {project.path && (
