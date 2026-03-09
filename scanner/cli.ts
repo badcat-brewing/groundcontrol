@@ -43,6 +43,7 @@ Sync usage:
   npm run pm sync                     Clone missing + pull existing (both)
   npm run pm sync -- clone            Clone missing repos only
   npm run pm sync -- pull             Pull existing repos only
+  npm run pm sync -- full             Scan first, then clone + pull (catches new repos)
 
 Overrides usage:
   npm run pm overrides -- list        List all overrides
@@ -55,6 +56,7 @@ Examples:
   npm run pm export -- /tmp/manifest.json
   npm run pm overlaps
   npm run pm sync
+  npm run pm sync -- full
   npm run pm sync -- clone
   npm run pm overrides -- list
   npm run pm overrides -- set myproject --tag test --status paused --notes "on hold"
@@ -216,11 +218,11 @@ function handleOverlaps() {
   }
 }
 
-function handleSync(args: string[]) {
+async function handleSync(args: string[]) {
   const action = args[0] || 'both';
 
   if (!validateSyncAction(action)) {
-    console.error(`Invalid sync action: ${action}. Must be clone, pull, or both.`);
+    console.error(`Invalid sync action: ${action}. Must be clone, pull, both, or full.`);
     process.exit(1);
   }
 
@@ -230,6 +232,14 @@ function handleSync(args: string[]) {
   if (!localDir) {
     console.error('LOCAL_PROJECTS_DIR environment variable is not set.');
     process.exit(1);
+  }
+
+  // 'full' runs a scan first to ensure the manifest is up-to-date
+  if (action === 'full') {
+    console.log('Running scan to refresh manifest before sync...');
+    console.log('—'.repeat(50));
+    await handleScan(args.slice(1));
+    console.log('');
   }
 
   const manifest = loadManifest();
@@ -435,7 +445,7 @@ async function main() {
       handleOverlaps();
       break;
     case 'sync':
-      handleSync(commandArgs);
+      await handleSync(commandArgs);
       break;
     case 'overrides':
       handleOverrides(commandArgs);

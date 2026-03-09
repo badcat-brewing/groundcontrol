@@ -88,10 +88,10 @@ export function pullRepo(
   }
 }
 
-export type SyncAction = 'clone' | 'pull' | 'both';
+export type SyncAction = 'clone' | 'pull' | 'both' | 'full';
 
 export function validateSyncAction(action: string): action is SyncAction {
-  return ['clone', 'pull', 'both'].includes(action);
+  return ['clone', 'pull', 'both', 'full'].includes(action);
 }
 
 export interface SyncWorkItem {
@@ -105,11 +105,12 @@ export function buildWorkList(
   projects: Array<{ name: string; path: string | null; githubUrl: string | null }>,
   action: SyncAction,
 ): SyncWorkItem[] {
+  const effectiveAction = action === 'full' ? 'both' : action;
   const work: SyncWorkItem[] = [];
   for (const project of projects) {
-    if ((action === 'clone' || action === 'both') && !project.path && project.githubUrl) {
+    if ((effectiveAction === 'clone' || effectiveAction === 'both') && !project.path && project.githubUrl) {
       work.push({ name: project.name, githubUrl: project.githubUrl, op: 'clone' });
-    } else if ((action === 'pull' || action === 'both') && project.path) {
+    } else if ((effectiveAction === 'pull' || effectiveAction === 'both') && project.path) {
       work.push({ name: project.name, path: project.path, op: 'pull' });
     }
   }
