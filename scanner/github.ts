@@ -24,7 +24,7 @@ export function transformRepoData(repo: any, owner: string): PartialProject {
   const visibility = repo.visibility ? repo.visibility : (repo.private ? 'private' : 'public');
   return {
     name: repo.name,
-    owner,
+    owner: repo.owner?.login || owner,
     githubUrl: repo.html_url,
     defaultBranch: repo.default_branch || 'main',
     lastCommitDate: repo.pushed_at || null,
