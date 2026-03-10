@@ -16,8 +16,22 @@ function makeProject(name: string, capabilities: string[]): Project {
     license: null,
     sizeKB: 0,
     isArchived: false,
+    isDisabled: false,
     isFork: false,
+    ownerType: null,
+    fullName: null,
+    githubDescription: null,
+    createdAt: null,
+    openIssueCount: 0,
+    starCount: 0,
+    forkCount: 0,
+    homepage: null,
     diff: null,
+    localClones: [],
+    remoteUrl: null,
+    hasStaleRemote: false,
+    expectedRemoteUrl: null,
+    whatsNext: null,
   };
 }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readManifest } from '@/lib/manifest';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, unlinkSync, rmdirSync, readdirSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { join } from 'path';
 
@@ -44,6 +44,34 @@ export async function POST(
       const message = error instanceof Error ? error.message : 'Git push failed';
       return NextResponse.json({ error: message, saved: true }, { status: 500 });
     }
+  }
+
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ name: string }> }
+) {
+  const { name } = await params;
+  const decodedName = decodeURIComponent(name);
+
+  const manifest = readManifest();
+  const project = manifest?.projects.find((p) => p.name === decodedName);
+  if (!project?.path) {
+    return NextResponse.json({ error: 'Project not found or has no local path' }, { status: 404 });
+  }
+
+  const gcDir = join(project.path, '.groundcontrol');
+  const filePath = join(gcDir, 'WHATS-NEXT.md');
+
+  if (existsSync(filePath)) {
+    unlinkSync(filePath);
+    // Clean up empty .groundcontrol dir
+    try {
+      const remaining = readdirSync(gcDir);
+      if (remaining.length === 0) rmdirSync(gcDir);
+    } catch { /* ignore */ }
   }
 
   return NextResponse.json({ success: true });

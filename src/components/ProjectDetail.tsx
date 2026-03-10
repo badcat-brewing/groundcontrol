@@ -488,8 +488,31 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
         hasLocalPath={!!project.path}
       />
 
-      {/* Local Path */}
-      {project.path && (
+      {/* Local Clones */}
+      {project.localClones && project.localClones.length > 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
+            {project.localClones.length > 1 ? `Local Clones (${project.localClones.length})` : 'Local Path'}
+          </h2>
+          <div className="space-y-2">
+            {project.localClones.map((clone, i) => (
+              <div key={clone.path} className={`flex items-center justify-between rounded-md px-3 py-2 ${i === 0 ? 'bg-sky-50 border border-sky-100' : 'bg-slate-50'}`}>
+                <code className="text-sm font-mono text-slate-700">{clone.path}</code>
+                <div className="flex items-center gap-2">
+                  {clone.lastCommitDate && (
+                    <span className="text-xs text-slate-500">
+                      {timeAgo(clone.lastCommitDate)}
+                    </span>
+                  )}
+                  {i === 0 && project.localClones.length > 1 && (
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-600">primary</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : project.path ? (
         <div className="rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">
             Local Path
@@ -498,7 +521,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
             {project.path}
           </code>
         </div>
-      )}
+      ) : null}
 
       {/* Override Editor */}
       <ProjectEditor

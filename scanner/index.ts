@@ -31,14 +31,34 @@ function findLocalPath(name: string, localDir: string): string | null {
   }
 }
 
-function discoverLocalDirs(localDir: string): string[] {
+interface LocalDirEntry {
+  name: string;    // leaf directory name (for matching)
+  path: string;    // full absolute path
+}
+
+function discoverLocalDirs(localDir: string): LocalDirEntry[] {
+  const results: LocalDirEntry[] = [];
   try {
-    return readdirSync(localDir, { withFileTypes: true })
-      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-      .map(entry => entry.name);
+    const topLevel = readdirSync(localDir, { withFileTypes: true })
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'));
+
+    for (const entry of topLevel) {
+      const fullPath = join(localDir, entry.name);
+      results.push({ name: entry.name, path: fullPath });
+
+      // Scan one level deeper
+      try {
+        const subEntries = readdirSync(fullPath, { withFileTypes: true })
+          .filter(sub => sub.isDirectory() && !sub.name.startsWith('.'));
+        for (const sub of subEntries) {
+          results.push({ name: sub.name, path: join(fullPath, sub.name) });
+        }
+      } catch { /* permission errors, etc. */ }
+    }
   } catch {
     return [];
   }
+  return results;
 }
 
 function getLastCommitDate(projectDir: string): string | null {
@@ -171,6 +191,7 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
     projects.push({
       name: repo.name,
       path: localPath,
+      localClones: localPath ? [{ path: localPath, lastCommitDate: getLastCommitDate(localPath) }] : [],
       githubUrl: repo.githubUrl,
       lastCommitDate: repo.lastCommitDate,
       commitCountLast30Days: repo.commitCountLast30Days,
@@ -215,48 +236,57 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
 
   // Discover local-only projects not found on GitHub
   // Uses git remote URL matching to associate local dirs with GitHub repos
+  // Scans 2 levels deep and tracks multiple clones of the same repo
   if (localDir) {
-    // Include both full names (org/repo) and base names for matching against local dirs
-    const githubNames = new Set<string>();
-    for (const r of repos) {
-      githubNames.add(r.name);
-      if (r.name.includes('/')) {
-        githubNames.add(r.name.split('/').slice(1).join('/'));
-      }
-    }
-    // Track which repos have already been matched to a local path (by name)
-    const matchedRepoIndices = new Set<number>();
-
     const localDirs = discoverLocalDirs(localDir);
-    const localOnly = localDirs.filter(name => !githubNames.has(name));
 
-    for (const name of localOnly) {
-      const localPath = join(localDir, name);
+    // Track paths already assigned in the first pass (by-name matching)
+    const alreadyMatchedPaths = new Set<string>();
+    for (const p of projects) {
+      if (p.path) alreadyMatchedPaths.add(p.path);
+    }
 
-      // Skip non-git directories (plain files, misc folders)
-      if (!existsSync(join(localPath, '.git'))) continue;
+    // Filter to dirs not already matched by path in the first pass
+    const unmatched = localDirs.filter(entry => !alreadyMatchedPaths.has(entry.path));
 
-      onProgress?.({ phase: 'enriching', current: projects.length + 1, total: repos.length + localOnly.length, repoName: name });
+    for (const entry of unmatched) {
+      // Skip non-git directories
+      if (!existsSync(join(entry.path, '.git'))) continue;
+
+      onProgress?.({ phase: 'enriching', current: projects.length + 1, total: repos.length + unmatched.length, repoName: entry.name });
 
       // Try to match via git remote URL
-      const remoteInfo = getGitRemoteUrl(localPath);
+      const remoteInfo = getGitRemoteUrl(entry.path);
       if (remoteInfo) {
         const lookupKey = `${remoteInfo.owner}/${remoteInfo.repo}`.toLowerCase();
         const repoIdx = repoLookup.get(lookupKey);
 
-        if (repoIdx !== undefined && !matchedRepoIndices.has(repoIdx)) {
-          // Found a match — update the existing project entry to be synced
-          matchedRepoIndices.add(repoIdx);
+        if (repoIdx !== undefined) {
+          // Found a match — this local dir is a clone of a known GitHub repo
           const existingProject = projects.find(p => p.name === repos[repoIdx].name);
           if (existingProject) {
-            const local = readLocalProject(localPath);
-            existingProject.path = localPath;
-            existingProject.source = 'synced';
-            existingProject.hasClaude = local.hasClaude;
-            existingProject.hasReadme = local.hasReadme;
-            existingProject.hasPlanDocs = local.hasPlanDocs;
-            existingProject.hasTodos = local.hasTodos;
-            existingProject.remoteUrl = remoteInfo.url;
+            const cloneDate = getLastCommitDate(entry.path);
+            const clone = { path: entry.path, lastCommitDate: cloneDate };
+
+            // Add to clones list (avoid duplicates by path)
+            if (!existingProject.localClones.some(c => c.path === entry.path)) {
+              existingProject.localClones.push(clone);
+            }
+
+            // If this is the first local path or more recently active, make it primary
+            if (!existingProject.path || (cloneDate && (!existingProject.localClones[0]?.lastCommitDate || cloneDate > existingProject.localClones[0].lastCommitDate))) {
+              const local = readLocalProject(entry.path);
+              existingProject.path = entry.path;
+              existingProject.source = 'synced';
+              existingProject.hasClaude = local.hasClaude;
+              existingProject.hasReadme = local.hasReadme;
+              existingProject.hasPlanDocs = local.hasPlanDocs;
+              existingProject.hasTodos = local.hasTodos;
+              existingProject.remoteUrl = remoteInfo.url;
+              existingProject.whatsNext = local.whatsNextContent ?? null;
+              existingProject.diff = await computeLocalRemoteDiff(entry.path, repos[repoIdx].branchNames, repos[repoIdx].defaultBranch);
+            }
+
             const matchedRepoBaseName = repos[repoIdx].name.includes('/') ? repos[repoIdx].name.split('/').slice(1).join('/') : repos[repoIdx].name;
             const matchedRepoOwner = repos[repoIdx].owner;
             existingProject.hasStaleRemote = (
@@ -266,30 +296,41 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
             existingProject.expectedRemoteUrl = existingProject.hasStaleRemote
               ? `https://github.com/${matchedRepoOwner}/${matchedRepoBaseName}.git`
               : null;
-            existingProject.whatsNext = local.whatsNextContent ?? null;
-            existingProject.diff = await computeLocalRemoteDiff(localPath, repos[repoIdx].branchNames, repos[repoIdx].defaultBranch);
+
+            // Sort clones: most recently active first
+            existingProject.localClones.sort((a, b) => {
+              if (!a.lastCommitDate && !b.lastCommitDate) return 0;
+              if (!a.lastCommitDate) return 1;
+              if (!b.lastCommitDate) return -1;
+              return b.lastCommitDate.localeCompare(a.lastCommitDate);
+            });
+            // Primary path = most recently active clone
+            if (existingProject.localClones.length > 0) {
+              existingProject.path = existingProject.localClones[0].path;
+            }
           }
           continue;
         }
       }
 
       // No match in scanned repos
-      const local = readLocalProject(localPath);
+      const local = readLocalProject(entry.path);
       const docContent = local.claudeContent || local.readmeContent || '';
       const description = extractDescription(docContent);
       const capabilities = extractCapabilities(docContent);
       const techStack = detectTechStack(local.dependencies, local.fileExtensions);
 
-      const override = overrides[name] || {};
-      const lastCommitDate = getLastCommitDate(localPath);
+      const override = overrides[entry.name] || {};
+      const lastCommitDate = getLastCommitDate(entry.path);
       const computed = computeStatus(lastCommitDate);
 
       // Determine source: has-remote if git remote exists but not in scan, local-only otherwise
       const source = remoteInfo ? 'has-remote' as const : 'local-only' as const;
 
       projects.push({
-        name,
-        path: localPath,
+        name: entry.name,
+        path: entry.path,
+        localClones: [{ path: entry.path, lastCommitDate }],
         githubUrl: null,
         lastCommitDate,
         commitCountLast30Days: 0,

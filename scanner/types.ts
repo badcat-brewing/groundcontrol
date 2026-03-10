@@ -11,9 +11,15 @@ export interface LocalRemoteDiff {
   remoteOnlyBranches: string[];
 }
 
+export interface LocalClone {
+  path: string;
+  lastCommitDate: string | null;
+}
+
 export interface Project {
   name: string;
   path: string | null;
+  localClones: LocalClone[];
   githubUrl: string | null;
 
   lastCommitDate: string | null;

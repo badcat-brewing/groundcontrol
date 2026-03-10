@@ -55,6 +55,26 @@ export default function WhatsNext({ projectName, initialContent, hasLocalPath }:
     }
   }
 
+  async function handleClear() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectName)}/whats-next`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to clear');
+      setContent('');
+      setEditing(false);
+      setSaved('Cleared!');
+      setTimeout(() => setSaved(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-5">
       <div className="mb-3 flex items-center justify-between">
@@ -63,22 +83,32 @@ export default function WhatsNext({ projectName, initialContent, hasLocalPath }:
         </h2>
         <div className="flex gap-2">
           {!editing && content && hasLocalPath && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="rounded-md px-3 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100"
-            >
-              Edit
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="rounded-md px-3 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleClear}
+                disabled={loading}
+                className="rounded-md px-3 py-1 text-xs font-medium text-red-500 hover:bg-red-50 disabled:opacity-50"
+              >
+                {loading ? 'Clearing...' : 'Clear'}
+              </button>
+            </>
           )}
-          {!editing && !content && (
+          {!editing && (
             <button
               type="button"
               onClick={handleSuggest}
               disabled={suggesting}
               className="rounded-md bg-violet-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-400 disabled:opacity-50"
             >
-              {suggesting ? 'Thinking...' : 'Suggest What\'s Next'}
+              {suggesting ? 'Thinking...' : content ? 'Re-generate' : 'Suggest What\'s Next'}
             </button>
           )}
         </div>
