@@ -122,6 +122,11 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
                   Archived
                 </span>
               )}
+              {project.isDisabled && (
+                <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-600">
+                  Disabled
+                </span>
+              )}
               {project.isFork && (
                 <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                   Fork
@@ -161,8 +166,20 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
               </div>
             )}
 
-            {/* Size and License */}
+            {/* Size, License, and GitHub stats */}
             <div className="flex flex-wrap gap-4">
+              {project.ownerType && (
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Owner</p>
+                  <p className="text-sm text-slate-900">{project.fullName?.split('/')[0] || '—'} <span className="text-xs text-slate-400">({project.ownerType})</span></p>
+                </div>
+              )}
+              {project.createdAt && (
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Created</p>
+                  <p className="text-sm text-slate-900">{new Date(project.createdAt).toLocaleDateString()}</p>
+                </div>
+              )}
               {project.sizeKB !== undefined && (
                 <div>
                   <p className="text-xs font-medium text-slate-500">Size</p>
@@ -173,6 +190,34 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
                 <div>
                   <p className="text-xs font-medium text-slate-500">License</p>
                   <p className="text-sm text-slate-900">{project.license}</p>
+                </div>
+              )}
+              {(project.starCount > 0 || project.forkCount > 0 || project.openIssueCount > 0) && (
+                <>
+                  {project.starCount > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Stars</p>
+                      <p className="text-sm text-slate-900">{project.starCount}</p>
+                    </div>
+                  )}
+                  {project.forkCount > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Forks</p>
+                      <p className="text-sm text-slate-900">{project.forkCount}</p>
+                    </div>
+                  )}
+                  {project.openIssueCount > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Open Issues</p>
+                      <p className="text-sm text-slate-900">{project.openIssueCount}</p>
+                    </div>
+                  )}
+                </>
+              )}
+              {project.homepage && (
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Homepage</p>
+                  <a href={project.homepage} target="_blank" rel="noopener noreferrer" className="text-sm text-sky-600 hover:text-sky-700">{project.homepage}</a>
                 </div>
               )}
             </div>

@@ -17,7 +17,16 @@ export interface PartialProject {
   license: string | null;
   sizeKB: number;
   isArchived: boolean;
+  isDisabled: boolean;
   isFork: boolean;
+  ownerType: 'User' | 'Organization' | null;
+  fullName: string;
+  githubDescription: string | null;
+  createdAt: string | null;
+  openIssueCount: number;
+  starCount: number;
+  forkCount: number;
+  homepage: string | null;
 }
 
 export function transformRepoData(repo: any, owner: string): PartialProject {
@@ -38,7 +47,16 @@ export function transformRepoData(repo: any, owner: string): PartialProject {
     license: repo.license?.spdx_id || null,
     sizeKB: repo.size || 0,
     isArchived: repo.archived || false,
+    isDisabled: repo.disabled || false,
     isFork: repo.fork || false,
+    ownerType: repo.owner?.type || null,
+    fullName: repo.full_name || `${repo.owner?.login || owner}/${repo.name}`,
+    githubDescription: repo.description || null,
+    createdAt: repo.created_at || null,
+    openIssueCount: repo.open_issues_count || 0,
+    starCount: repo.stargazers_count || 0,
+    forkCount: repo.forks_count || 0,
+    homepage: repo.homepage || null,
   };
 }
 

@@ -145,7 +145,7 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
     }
 
     const docContent = local.claudeContent || local.readmeContent || '';
-    const description = extractDescription(docContent);
+    const description = extractDescription(docContent) || repo.githubDescription;
     const capabilities = extractCapabilities(docContent);
     const techStack = detectTechStack(local.dependencies, local.fileExtensions);
 
@@ -195,7 +195,16 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
       license: repo.license,
       sizeKB: repo.sizeKB,
       isArchived: repo.isArchived,
+      isDisabled: repo.isDisabled,
       isFork: repo.isFork,
+      ownerType: repo.ownerType,
+      fullName: repo.fullName,
+      githubDescription: repo.githubDescription,
+      createdAt: repo.createdAt,
+      openIssueCount: repo.openIssueCount,
+      starCount: repo.starCount,
+      forkCount: repo.forkCount,
+      homepage: repo.homepage,
       diff,
       remoteUrl: remoteInfo?.url ?? null,
       hasStaleRemote,
@@ -305,7 +314,16 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
         license: null,
         sizeKB: 0,
         isArchived: false,
+        isDisabled: false,
         isFork: false,
+        ownerType: null,
+        fullName: null,
+        githubDescription: null,
+        createdAt: null,
+        openIssueCount: 0,
+        starCount: 0,
+        forkCount: 0,
+        homepage: null,
         diff: null,
         remoteUrl: remoteInfo?.url ?? null,
         hasStaleRemote: false,

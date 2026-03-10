@@ -44,7 +44,16 @@ export interface Project {
   license: string | null;
   sizeKB: number;
   isArchived: boolean;
+  isDisabled: boolean;
   isFork: boolean;
+  ownerType: 'User' | 'Organization' | null;
+  fullName: string | null;
+  githubDescription: string | null;
+  createdAt: string | null;
+  openIssueCount: number;
+  starCount: number;
+  forkCount: number;
+  homepage: string | null;
   diff: LocalRemoteDiff | null;
   remoteUrl: string | null;
   hasStaleRemote: boolean;
