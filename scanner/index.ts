@@ -164,7 +164,7 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
     ));
 
     let diff = null;
-    if (source === 'synced' && localPath) {
+    if (source === 'synced' && localPath && existsSync(join(localPath, '.git'))) {
       diff = await computeLocalRemoteDiff(localPath, repo.branchNames, repo.defaultBranch);
     }
 
