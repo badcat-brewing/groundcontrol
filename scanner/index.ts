@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
-import { fetchAllRepos, fetchRepoFiles, type PartialProject, type FetchResult } from './github';
+import { fetchAllRepos, fetchRepoFiles, discoverReposViaGhCli, type PartialProject, type FetchResult } from './github';
 import { readLocalProject } from './local';
 import { extractDescription, extractCapabilities, detectTechStack } from './extractor';
 import { computeStatus } from './status';
@@ -121,6 +121,32 @@ export async function runScan(options: ScanOptions): Promise<ProjectManifest> {
         seenRepoKeys.add(prefixedName);
       }
     }
+  }
+
+  // Supplement with gh CLI discovery to catch repos the token can't see
+  const ghCliRepos = discoverReposViaGhCli(username);
+  let ghCliSupplemented = 0;
+  for (const repo of ghCliRepos) {
+    if (!seenRepoKeys.has(repo.name)) {
+      repos.push(repo);
+      seenRepoKeys.add(repo.name);
+      ghCliSupplemented++;
+    }
+  }
+  for (const orgName of allOrgs) {
+    const orgGhCliRepos = discoverReposViaGhCli(username, orgName);
+    for (const repo of orgGhCliRepos) {
+      const prefixedName = legacySingleOrg ? repo.name : `${orgName}/${repo.name}`;
+      if (!seenRepoKeys.has(prefixedName)) {
+        repo.name = prefixedName;
+        repos.push(repo);
+        seenRepoKeys.add(prefixedName);
+        ghCliSupplemented++;
+      }
+    }
+  }
+  if (ghCliSupplemented > 0) {
+    console.log(`gh CLI discovered ${ghCliSupplemented} additional repos not visible to token`);
   }
 
   // Build owner/repo -> index lookup from GitHub repos for remote URL matching

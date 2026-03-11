@@ -143,6 +143,13 @@ export default function SyncPanel({ projects }: { projects: ProjectInfo[] }) {
         >
           {running ? 'Working...' : 'Clone + Pull All'}
         </button>
+        <button
+          onClick={() => handleSync('full')}
+          disabled={running}
+          className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+        >
+          {running ? 'Working...' : 'Full Sync (Scan + Clone + Pull)'}
+        </button>
       </div>
 
       {error && (

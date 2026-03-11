@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { execFileSync } from 'child_process';
 import type { OnProgress } from './progress';
 
 export interface PartialProject {
@@ -170,4 +171,44 @@ export async function fetchAllRepos(token: string, username: string, org?: strin
   }
 
   return { projects, octokit, owner };
+}
+
+/**
+ * Discover repos via the `gh` CLI, which often has broader auth than a fine-grained PAT.
+ * Returns basic repo metadata without enrichment — intended for supplementing Octokit results.
+ */
+export function discoverReposViaGhCli(username: string, org?: string): PartialProject[] {
+  try {
+    const target = org || username;
+    // Strip GITHUB_TOKEN from subprocess env so gh uses its own stored auth,
+    // which typically has broader access than a fine-grained PAT
+    const { GITHUB_TOKEN: _, ...cleanEnv } = process.env;
+    const result = execFileSync('gh', [
+      'repo', 'list', target,
+      '--limit', '500',
+      '--json', 'name,url,defaultBranchRef,pushedAt,visibility,isArchived,isFork,repositoryTopics,licenseInfo,diskUsage,isPrivate',
+    ], { encoding: 'utf-8', timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'], env: cleanEnv });
+
+    const repos = JSON.parse(result);
+    return repos.map((r: any) => ({
+      name: r.name,
+      owner: target,
+      githubUrl: r.url,
+      defaultBranch: r.defaultBranchRef?.name || 'main',
+      lastCommitDate: r.pushedAt || null,
+      branchCount: 0,
+      branchNames: [],
+      openPRCount: 0,
+      commitCountLast30Days: 0,
+      visibility: r.isPrivate ? 'private' : (r.visibility?.toLowerCase() as 'public' | 'private') || 'public',
+      languages: {},
+      topics: (r.repositoryTopics || []).map((t: any) => t.name || t),
+      license: r.licenseInfo?.spdx_id || r.licenseInfo?.key || null,
+      sizeKB: r.diskUsage || 0,
+      isArchived: r.isArchived || false,
+      isFork: r.isFork || false,
+    }));
+  } catch {
+    return [];
+  }
 }
